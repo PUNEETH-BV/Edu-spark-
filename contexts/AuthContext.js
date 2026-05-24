@@ -48,15 +48,20 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }
 
-  async function signInWithGoogle() {
+  async function signInWithGoogle(email, name) {
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { email, name }
+    });
     if (error) {
       setLoading(false);
       throw new Error(error.message || 'Google sign in failed');
     }
-    setUser(data.user);
-    await fetchProfile(data.user.id);
+    if (data?.user) {
+      setUser(data.user);
+      await fetchProfile(data.user.id);
+    }
     setLoading(false);
   }
 
