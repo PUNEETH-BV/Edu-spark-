@@ -35,7 +35,7 @@ const PRESENTATION_SLIDES = [
 
 const FLASHCARDS = [
   {
-    image: "https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=400&auto=format&fit=crop&q=60",
+    image: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160"><rect width="200" height="160" rx="8" fill="%230d0d2a"/><path d="M100 25 C60 25 35 55 35 85 C35 120 70 145 100 155 C130 145 165 120 165 85 C165 55 140 25 100 25Z" fill="%23ef4444" opacity="0.2" stroke="%23ef4444" stroke-width="1.5"/><line x1="100" y1="25" x2="100" y2="155" stroke="%23ef4444" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/><line x1="35" y1="85" x2="165" y2="85" stroke="%23ef4444" stroke-width="0.8" stroke-dasharray="3,3" opacity="0.5"/><text x="70" y="60" fill="%23fca5a5" font-size="8" font-weight="600" text-anchor="middle">Left</text><text x="70" y="70" fill="%23fca5a5" font-size="8" font-weight="600" text-anchor="middle">Atrium</text><text x="130" y="60" fill="%23fca5a5" font-size="8" font-weight="600" text-anchor="middle">Right</text><text x="130" y="70" fill="%23fca5a5" font-size="8" font-weight="600" text-anchor="middle">Atrium</text><text x="70" y="110" fill="%23f87171" font-size="8" font-weight="600" text-anchor="middle">Left</text><text x="70" y="120" fill="%23f87171" font-size="8" font-weight="600" text-anchor="middle">Ventricle</text><text x="130" y="110" fill="%23f87171" font-size="8" font-weight="600" text-anchor="middle">Right</text><text x="130" y="120" fill="%23f87171" font-size="8" font-weight="600" text-anchor="middle">Ventricle</text><text x="100" y="15" fill="%23fca5a5" font-size="7" text-anchor="middle" opacity="0.6">♥ Heart Chambers</text></svg>')}`,
     title: "Heart Chamber Identifier",
     description: "Identify this upper heart chamber (receives oxygenated blood from lungs)",
     correctTerm: "Atrium",
@@ -43,7 +43,7 @@ const FLASHCARDS = [
     hintText: "It starts with A and ends with M. It acts as an entry chamber."
   },
   {
-    image: "https://images.unsplash.com/photo-1463171359079-3d9996683be8?w=400&auto=format&fit=crop&q=60",
+    image: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160"><rect width="200" height="160" rx="8" fill="%230d0d2a"/><ellipse cx="100" cy="80" rx="70" ry="50" fill="%2322c55e" opacity="0.1" stroke="%2322c55e" stroke-width="1.2"/><ellipse cx="100" cy="80" rx="50" ry="35" fill="%2322c55e" opacity="0.08" stroke="%234ade80" stroke-width="0.8"/><ellipse cx="75" cy="70" rx="18" ry="8" fill="%234ade80" opacity="0.15" stroke="%234ade80" stroke-width="0.6"/><ellipse cx="100" cy="85" rx="18" ry="8" fill="%234ade80" opacity="0.15" stroke="%234ade80" stroke-width="0.6"/><ellipse cx="125" cy="75" rx="18" ry="8" fill="%234ade80" opacity="0.15" stroke="%234ade80" stroke-width="0.6"/><text x="100" y="55" fill="%2386efac" font-size="8" font-weight="600" text-anchor="middle">Outer Membrane</text><text x="100" y="105" fill="%234ade80" font-size="7" text-anchor="middle">Thylakoid Discs</text><text x="100" y="120" fill="%23bbf7d0" font-size="7" text-anchor="middle" opacity="0.6">Stroma</text><text x="100" y="15" fill="%234ade80" font-size="7" text-anchor="middle" opacity="0.6">🌿 Chloroplast</text></svg>')}`,
     title: "Organelle Identifier",
     description: "Identify this plant cell organelle where photosynthesis occurs",
     correctTerm: "Chloroplast",
@@ -51,7 +51,7 @@ const FLASHCARDS = [
     hintText: "Contains chlorophyll pigments and thylakoid discs."
   },
   {
-    image: "https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=400&auto=format&fit=crop&q=60",
+    image: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160"><rect width="200" height="160" rx="8" fill="%230d0d2a"/><line x1="30" y1="70" x2="170" y2="70" stroke="%233b82f6" stroke-width="3" opacity="0.4"/><line x1="30" y1="90" x2="170" y2="90" stroke="%233b82f6" stroke-width="3" opacity="0.4"/><line x1="95" y1="70" x2="95" y2="55" stroke="%23fbbf24" stroke-width="1.5" opacity="0.6"/><line x1="105" y1="90" x2="105" y2="105" stroke="%23fbbf24" stroke-width="1.5" opacity="0.6"/><path d="M80 40 L100 55 L120 40" fill="none" stroke="%23ef4444" stroke-width="2" opacity="0.7"/><path d="M80 120 L100 105 L120 120" fill="none" stroke="%23ef4444" stroke-width="2" opacity="0.7"/><text x="100" y="35" fill="%23fca5a5" font-size="7" text-anchor="middle">Cut Site</text><text x="100" y="135" fill="%23fca5a5" font-size="7" text-anchor="middle">Cut Site</text><text x="50" y="65" fill="%2393c5fd" font-size="7" opacity="0.7">5\'</text><text x="155" y="65" fill="%2393c5fd" font-size="7" opacity="0.7">3\'</text><text x="50" y="100" fill="%2393c5fd" font-size="7" opacity="0.7">3\'</text><text x="155" y="100" fill="%2393c5fd" font-size="7" opacity="0.7">5\'</text><text x="100" y="80" fill="%23fbbf24" font-size="6" text-anchor="middle" font-weight="bold">PAM</text><text x="100" y="15" fill="%23fbbf24" font-size="7" text-anchor="middle" opacity="0.6">✂ CRISPR-Cas9</text></svg>')}`,
     title: "Nuclease Enzyme",
     description: "Identify the programmable molecular scissors enzyme used in CRISPR",
     correctTerm: "Cas9",
