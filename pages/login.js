@@ -9,8 +9,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-  const { signIn, user, loading: authLoading } = useAuth();
+  const { signIn, signInWithGoogle, user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  async function handleGoogleSignIn() {
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      const redirect = router.query.redirect || '/dashboard';
+      router.push(redirect);
+    } catch (err) {
+      setError(err.message || 'Google sign in failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // Redirect already-authenticated users away from login page
   useEffect(() => {
@@ -107,6 +121,26 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="px-2 bg-[#121227] text-[#8b8bb5]">Or continue with</span></div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 py-3 border border-white/10 hover:border-purple/35 bg-surface1/60 hover:bg-surface1/85 rounded-xl transition-all text-xs font-bold text-[#f0f0ff] hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" width="16" height="16">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-1.14 2.78-2.4 3.62v3.01h3.88c2.27-2.08 3.57-5.14 3.57-8.48z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.01c-1.08.72-2.45 1.16-4.05 1.16-3.11 0-5.74-2.11-6.68-4.96H1.21v3.11C3.18 21.88 7.39 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.32 14.28a7.16 7.16 0 0 1 0-2.56V8.61H1.21a11.94 11.94 0 0 0 0 6.78l4.11-3.11z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.39 0 3.18 2.12 1.21 6.78l4.11 3.11c.94-2.85 3.57-4.96 6.68-4.96z"/>
+              </svg>
+              Google
+            </button>
 
             <p className="text-center text-sm mt-6" style={{ color: '#8b8bb5' }}>
               Don&apos;t have an account?{' '}

@@ -48,6 +48,18 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }
 
+  async function signInWithGoogle() {
+    setLoading(true);
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+    if (error) {
+      setLoading(false);
+      throw new Error(error.message || 'Google sign in failed');
+    }
+    setUser(data.user);
+    await fetchProfile(data.user.id);
+    setLoading(false);
+  }
+
   async function signUp(email, password, username) {
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({
@@ -132,7 +144,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, updateXP, awardBadge, updateProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut, signInWithGoogle, updateXP, awardBadge, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
