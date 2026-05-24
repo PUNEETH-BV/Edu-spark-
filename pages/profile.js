@@ -159,7 +159,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-2 self-start md:self-auto">
+                <div className="flex gap-2 self-start md:self-auto flex-wrap">
                   <button
                     onClick={() => showToast('Credentials shared to LinkedIn!')}
                     className="btn-secondary py-2 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg"
@@ -173,6 +173,13 @@ export default function ProfilePage() {
                   >
                     <span className="material-symbols-outlined text-xs">edit</span>
                     <span>Edit Profile</span>
+                  </button>
+                  <button
+                    onClick={signOut}
+                    className="btn-secondary py-2 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-lg border border-red-500/20 hover:border-red-500/40 text-red-400 hover:text-red-300 transition-all active:scale-[0.98]"
+                  >
+                    <span className="material-symbols-outlined text-xs">logout</span>
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>
