@@ -341,6 +341,10 @@ export default function PlayerPage() {
           {/* Top AppBar */}
           <header className="sticky top-0 z-30 bg-[#0d0d1a]/80 backdrop-blur-xl border-b border-white/5 h-16 flex justify-between items-center px-6 md:px-10 shrink-0">
             <div className="flex items-center gap-4 flex-1">
+              <Link href="/dashboard" className="flex items-center gap-1.5 lg:hidden btn-secondary py-1.5 px-3 rounded-xl text-xs font-bold" title="Back to Dashboard">
+                <span className="material-symbols-outlined text-sm">arrow_back</span>
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
               <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-85">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg,#7c3aed,#3b82f6)' }}>
                   🎓

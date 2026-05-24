@@ -64,14 +64,33 @@ export default function ProfilePage() {
   }
 
   async function fetchLeaderboard() {
-    // Build leaderboard and mark the currently-authenticated user
+    // Build leaderboard — show real user stats, calculate rank based on actual XP
     const displayName = profile?.username || user?.email?.split('@')[0] || 'You';
+    const userXp = profile?.xp || 0;
+    const userStreak = profile?.streak_days || 0;
+    // Calculate rank based on actual XP relative to other users
+    let userRank = '—';
+    if (userXp >= 22000) userRank = '02';
+    else if (userXp >= 21000) userRank = '03';
+    else if (userXp >= 10000) userRank = '10';
+    else if (userXp >= 5000) userRank = '25';
+    else if (userXp >= 1000) userRank = '50';
+    else if (userXp >= 100) userRank = '99';
+    else userRank = '—';
+
     const mockLeaderboard = [
       { rank: '01', name: 'Alexander Hunt',    xp: '24.1k', streak: 42, avatar: 'AH' },
       { rank: '02', name: 'Sofia Patel',       xp: '22.8k', streak: 15, avatar: 'SP' },
       { rank: '03', name: 'Marcus Vance',      xp: '21.5k', streak: 8,  avatar: 'MV' },
-      { rank: '42', name: displayName,         xp: (profile?.xp || 18420).toLocaleString(), streak: profile?.streak || 24, avatar: getInitials(displayName), isMe: true }
     ];
+    // Only show user on leaderboard if they have earned XP
+    if (userXp > 0) {
+      mockLeaderboard.push({
+        rank: userRank, name: displayName,
+        xp: userXp >= 1000 ? `${(userXp / 1000).toFixed(1)}k` : userXp.toString(),
+        streak: userStreak, avatar: getInitials(displayName), isMe: true
+      });
+    }
     setLeaderboard(mockLeaderboard);
   }
 
@@ -150,7 +169,9 @@ export default function ProfilePage() {
               {/* Banner backdrop */}
               <div className="h-32 bg-gradient-to-r from-purple/35 via-blue/20 to-[#0d0d1a] relative overflow-hidden">
                 <div className="absolute inset-0 bg-grid opacity-30" />
-                <div className="absolute top-4 right-4 text-xs font-bold text-text-muted">Rank #42 Global</div>
+                <div className="absolute top-4 right-4 text-xs font-bold text-text-muted">
+                  {(profile?.xp || 0) > 0 ? `Rank #${(profile?.xp || 0) >= 10000 ? '10' : (profile?.xp || 0) >= 5000 ? '25' : (profile?.xp || 0) >= 1000 ? '50' : '99'} Global` : 'Unranked'}
+                </div>
               </div>
 
               {/* Profile Details */}
@@ -163,7 +184,7 @@ export default function ProfilePage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h1 className="text-xl font-black font-display text-text-primary">{displayName}</h1>
-                      <span className="badge badge-purple text-[10px] font-bold">Lvl 18 · Visionary</span>
+                      <span className="badge badge-purple text-[10px] font-bold">Lvl {profile?.level || 1} · {(profile?.level || 1) >= 15 ? 'Visionary' : (profile?.level || 1) >= 10 ? 'Scholar' : (profile?.level || 1) >= 5 ? 'Explorer' : 'Beginner'}</span>
                     </div>
                     <p className="text-xs text-text-muted font-medium">
                       {profile.bio || 'Lifelong Learner'} · Joined {profile.joined_at ? new Date(profile.joined_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Oct 2025'}
@@ -200,9 +221,9 @@ export default function ProfilePage() {
               {/* Metrics Row — uses real profile data with sensible fallbacks */}
               <div className="grid grid-cols-3 border-t border-white/5 bg-surface2/30 divide-x divide-white/5">
                 {[
-                  { label: 'Total Time',        value: `${profile.hours_studied  ?? 124.5} hrs`,  icon: '⏱️' },
-                  { label: 'EduPoints',          value: (profile.xp              ?? 18420).toLocaleString(), icon: '⚡' },
-                  { label: 'Courses Completed',  value: `${profile.courses_completed ?? 12} Courses`, icon: '🎓' }
+                  { label: 'Total Time',        value: `${profile.hours_studied  ?? 0} hrs`,  icon: '⏱️' },
+                  { label: 'EduPoints',          value: (profile.xp              ?? 0).toLocaleString(), icon: '⚡' },
+                  { label: 'Courses Completed',  value: `${profile.courses_completed ?? 0} Courses`, icon: '🎓' }
                 ].map((s, idx) => (
                   <div key={idx} className="text-center p-4 py-5 space-y-1">
                     <div className="text-xl">{s.icon}</div>
@@ -241,7 +262,10 @@ export default function ProfilePage() {
                         {isEarned ? (
                           <span className="badge badge-green text-[9px] font-bold shrink-0">Earned</span>
                         ) : (
-                          <span className="badge bg-white/5 text-text-muted text-[9px] font-bold shrink-0">Locked (Demo)</span>
+                          <span className="flex items-center gap-1 badge bg-white/5 text-text-muted text-[9px] font-bold shrink-0">
+                            <span className="material-symbols-outlined text-[11px]">lock</span>
+                            Locked
+                          </span>
                         )}
                       </div>
                     );
