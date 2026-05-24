@@ -31,7 +31,7 @@ const TABS = [
 export default function PlayerPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { user, loading: authLoading, updateXP, awardBadge } = useAuth();
+  const { user, loading: authLoading, updateXP, awardBadge, signOut } = useAuth();
 
   const [video,      setVideo]     = useState(null);
   const [segments,   setSegments]  = useState([]);
@@ -295,6 +295,10 @@ export default function PlayerPage() {
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs"
             >
               ✋ Raise Hand
+            </button>
+            <button onClick={signOut} className="w-full flex items-center gap-3 p-3 rounded-xl text-text-muted hover:text-red-400 transition-colors text-left">
+              <span className="material-symbols-outlined text-sm">logout</span>
+              <span className="text-xs">Sign Out</span>
             </button>
           </div>
         </aside>
