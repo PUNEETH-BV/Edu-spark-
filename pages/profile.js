@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
+import { supabase } from '@/lib/supabase';
 
-const BADGES = [
-  { key: 'streak_24', label: '24 Day Streak', desc: 'Consistency King', icon: '🔥', earned: true },
-  { key: 'deep_work', label: 'Deep Work', desc: '4hr study marathon', icon: '⏱️', earned: true },
-  { key: 'bio_expert', label: 'Bio Expert', desc: 'Photosynthesis Master', icon: '🌿', earned: true },
-  { key: 'neuro_link', label: 'Neuro-Link', desc: '75% Course Progress', icon: '🧠', earned: false, progress: 75 }
+const ALL_BADGES = [
+  { key: 'first_watch', label: 'First Lecture', desc: 'Analyzed your first study resource', icon: '🎓' },
+  { key: 'streak_7', label: 'Streak Starter', desc: 'Achieved a 7-day study streak', icon: '🔥' },
+  { key: 'quiz_master', label: 'Quiz Master', desc: 'Scored 100% on any course quiz', icon: '🎯' },
+  { key: 'deep_work', label: 'Deep Work', desc: 'Completed a 4-hour study marathon', icon: '⏱️' }
 ];
 
 /** Derive 1–2 uppercase initials from a display name */
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [newUsername,     setNewUsername]      = useState('');
   const [showCertificate, setShowCertificate] = useState(null);
   const [toastMsg,        setToastMsg]        = useState('');
+  const [earnedBadgeKeys, setEarnedBadgeKeys] = useState([]);
 
   // Populate edit field whenever profile loads / changes
   useEffect(() => {
@@ -47,8 +49,19 @@ export default function ProfilePage() {
     if (user) {
       fetchLeaderboard();
       fetchCertifications();
+      fetchBadges();
     }
-  }, [user]);
+  }, [user, profile]);
+
+  async function fetchBadges() {
+    const { data } = await supabase
+      .from('badges')
+      .select('*')
+      .eq('user_id', user.id);
+    if (data) {
+      setEarnedBadgeKeys(data.map(b => b.badge_key));
+    }
+  }
 
   async function fetchLeaderboard() {
     // Build leaderboard and mark the currently-authenticated user
@@ -207,35 +220,32 @@ export default function ProfilePage() {
               <div className="lg:col-span-8 space-y-4">
                 <h2 className="text-base font-bold font-display text-text-primary">Badges &amp; Achievements</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {BADGES.map((b, idx) => (
-                    <div
-                      key={idx}
-                      className="glass p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 transition-all hover:border-purple/35"
-                      style={{ opacity: b.earned ? 1 : 0.45 }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-surface2/50 border border-white/10 flex items-center justify-center text-2xl">
-                          {b.icon}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-xs text-text-primary">{b.label}</h3>
-                          <p className="text-[10px] text-text-muted mt-0.5">{b.desc}</p>
-                        </div>
-                      </div>
-
-                      {!b.earned && b.progress && (
-                        <div className="text-right space-y-1 shrink-0">
-                          <span className="text-[10px] font-bold text-purple font-mono">{b.progress}%</span>
-                          <div className="w-16 progress-bar" style={{ height: 4 }}>
-                            <div className="progress-fill" style={{ width: `${b.progress}%` }} />
+                  {ALL_BADGES.map((b, idx) => {
+                    const isEarned = earnedBadgeKeys.includes(b.key);
+                    return (
+                      <div
+                        key={idx}
+                        className="glass p-4 rounded-2xl border border-white/5 flex items-center justify-between gap-4 transition-all hover:border-purple/35"
+                        style={{ opacity: isEarned ? 1 : 0.45 }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-surface2/50 border border-white/10 flex items-center justify-center text-2xl">
+                            {b.icon}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-xs text-text-primary">{b.label}</h3>
+                            <p className="text-[10px] text-text-muted mt-0.5">{b.desc}</p>
                           </div>
                         </div>
-                      )}
-                      {b.earned && (
-                        <span className="badge badge-green text-[9px] font-bold shrink-0">Earned</span>
-                      )}
-                    </div>
-                  ))}
+
+                        {isEarned ? (
+                          <span className="badge badge-green text-[9px] font-bold shrink-0">Earned</span>
+                        ) : (
+                          <span className="badge bg-white/5 text-text-muted text-[9px] font-bold shrink-0">Locked (Demo)</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 

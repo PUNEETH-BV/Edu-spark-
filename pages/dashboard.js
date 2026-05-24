@@ -70,6 +70,7 @@ export default function Dashboard() {
 
   // Breakdown modal state
   const [breakdownRes, setBreakdownRes] = useState(null);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -78,6 +79,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) {
       fetchVideos();
+      const isNewUser = localStorage.getItem('is_new_user_tour');
+      if (isNewUser === 'true') {
+        setShowTour(true);
+      }
     }
   }, [user]);
 
@@ -633,7 +638,7 @@ export default function Dashboard() {
               
               {/* Resource Ranker Search Input */}
               <div 
-                className="hidden md:flex flex-1 max-w-lg relative"
+                className={`hidden md:flex flex-1 max-w-lg relative transition-all duration-300 ${showTour ? 'ring-4 ring-purple glow-purple z-50 rounded-xl bg-[#0d0d1a]' : ''}`}
                 onMouseEnter={() => setSearchHover(true)}
                 onMouseLeave={() => setSearchHover(false)}
               >
@@ -737,7 +742,7 @@ export default function Dashboard() {
             </section>
 
             {/* Mobile search bar */}
-            <div className="md:hidden">
+            <div className={`md:hidden transition-all duration-300 ${showTour ? 'ring-4 ring-purple glow-purple z-50 relative rounded-xl bg-[#0d0d1a] p-1' : ''}`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   {searchLoading ? (
@@ -1223,6 +1228,52 @@ export default function Dashboard() {
                 >
                   Activate Study Path 🚀
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* New User Tour Overlay */}
+          {showTour && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.removeItem('is_new_user_tour'); }} />
+          )}
+
+          {/* New User Tour Dialog Card */}
+          {showTour && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+                <button 
+                  onClick={() => { setShowTour(false); localStorage.removeItem('is_new_user_tour'); }} 
+                  className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+                >
+                  ✕
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                    🚀
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-sm text-text-primary">EduSpark Platform Tour</h3>
+                    <span className="text-[10px] text-text-muted font-medium">Quick Onboarding · Step 1 of 1</span>
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  Welcome to your dashboard! To start learning, use the highlighted <strong className="text-purple-light">Resource Ranker Search Bar</strong>. 
+                  <br /><br />
+                  Type any topic (e.g. <em>"Python Basics"</em>, <em>"Machine Learning"</em>) and our point-scoring AI will find the best resources, score them out of 100, and generate your interactive classroom outline automatically!
+                </p>
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => {
+                      setShowTour(false);
+                      localStorage.removeItem('is_new_user_tour');
+                      const input = document.querySelector('input[placeholder*="Search"]');
+                      if (input) input.focus();
+                    }} 
+                    className="w-full btn-primary py-2.5 rounded-xl text-xs font-bold"
+                  >
+                    Let's Try It! 🚀
+                  </button>
+                </div>
               </div>
             </div>
           )}

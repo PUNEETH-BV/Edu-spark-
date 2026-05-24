@@ -18,6 +18,9 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('is_new_user_tour', 'true');
+      }
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Google sign up failed. Please try again.');
@@ -42,6 +45,9 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signUp(trimmedEmail, password, trimmedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('is_new_user_tour', 'true');
+      }
       router.push('/dashboard');
     } catch (err) {
       setError(err.message || 'Sign up failed. Please try again.');
