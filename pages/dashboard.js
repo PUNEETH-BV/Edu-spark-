@@ -948,9 +948,24 @@ export default function Dashboard() {
                       })}
 
                       {filteredVideos.length === 0 && (
-                        <div className="w-full glass rounded-3xl p-8 text-center text-xs text-text-muted">
-                          No active roadmaps match your search. Search a course above using the Resource Ranker or add a direct video below.
-                        </div>
+                        <>
+                          {[
+                            { title: 'Web Development from Scratch', subject: 'Web Development', icon: '🌐', color: '#7c3aed', url: 'https://www.youtube.com/watch?v=Ke90Tje7VS0' },
+                            { title: 'Python for Beginners', subject: 'Programming', icon: '🐍', color: '#3b82f6', url: 'https://www.youtube.com/watch?v=kqtD5dpn9C8' },
+                            { title: 'Introduction to Machine Learning', subject: 'AI & ML', icon: '🤖', color: '#22c55e', url: 'https://www.youtube.com/watch?v=aircAruvnKk' },
+                          ].map((s, i) => (
+                            <div key={i} className="min-w-[320px] md:min-w-[360px] snap-start glass rounded-3xl p-5 relative overflow-hidden group border border-dashed border-white/10 hover:border-purple/35 transition-all cursor-pointer opacity-80 hover:opacity-100" style={{ borderColor: `${s.color}30` }}>
+                              <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl" style={{ background: `${s.color}08` }} />
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl border border-white/10" style={{ background: `${s.color}15` }}>{s.icon}</div>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: `${s.color}18`, color: s.color }}>Suggested</span>
+                              </div>
+                              <h3 className="font-semibold text-sm text-text-primary line-clamp-1">{s.title}</h3>
+                              <p className="text-xs text-text-muted mt-1 mb-4">Subject: <span className="text-purple-light font-medium">{s.subject}</span></p>
+                              <p className="text-xs text-text-muted italic">Search this topic above to start your roadmap →</p>
+                            </div>
+                          ))}
+                        </>
                       )}
                     </div>
                   )}
@@ -1129,15 +1144,17 @@ export default function Dashboard() {
                       <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Hours Studied</p>
                       <div className="flex items-end gap-1 mt-1.5">
                         <span className="text-lg font-bold text-purple">{profile.hours_studied ?? 0}</span>
-                        <span className="text-[9px] text-green font-bold pb-0.5 font-mono">+12%</span>
+                        {(profile.hours_studied ?? 0) > 0 && <span className="text-[9px] text-green font-bold pb-0.5 font-mono">+12%</span>}
                       </div>
+                      {(profile.hours_studied ?? 0) === 0 && <p className="text-[8px] text-text-muted mt-1 italic">Start a course to track hours ✨</p>}
                     </div>
                     <div className="bg-[#12122a]/80 p-3.5 rounded-xl border border-white/5">
                       <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Points Earned</p>
                       <div className="flex items-end gap-1 mt-1.5">
                         <span className="text-lg font-bold text-blue">{profile.xp ?? 0}</span>
-                        <span className="text-yellow text-[9px] pb-0.5">★</span>
+                        {(profile.xp ?? 0) > 0 && <span className="text-yellow text-[9px] pb-0.5">★</span>}
                       </div>
+                      {(profile.xp ?? 0) === 0 && <p className="text-[8px] text-text-muted mt-1 italic">Complete quizzes to earn XP 🚀</p>}
                     </div>
                   </div>
 

@@ -318,6 +318,7 @@ export default function PlayerPage() {
           <div className="mt-auto space-y-1 border-t border-white/5 pt-4">
             <button
               id="raise-hand-btn"
+              title="Ask your teacher a live question"
               onClick={() => {
                 handlePause();
                 setRightSidebarMode('expert');

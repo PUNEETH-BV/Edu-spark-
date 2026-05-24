@@ -112,35 +112,35 @@ export default function Sidebar({
       </div>
       
       <nav className="flex-1 space-y-1">
-        <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isDashboardActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isDashboardActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">home</span>
           <span className="text-xs">Dashboard</span>
         </Link>
-        <Link href={classroomHref} onClick={handleClassroomClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isClassroomActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href={classroomHref} onClick={handleClassroomClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isClassroomActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">school</span>
           <span className="text-xs">Classroom</span>
         </Link>
-        <Link href={expertHref} onClick={handleExpertClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isExpertActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href={expertHref} onClick={handleExpertClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isExpertActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">smart_toy</span>
           <span className="text-xs">AI Expert</span>
         </Link>
-        <Link href={friendsHref} onClick={handleFriendsClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isFriendsActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href={friendsHref} onClick={handleFriendsClick} title="Chat with AI study companions who help you learn" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isFriendsActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">forum</span>
           <span className="text-xs">AI Friends</span>
         </Link>
-        <Link href="/smart-board" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isSmartBoardActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href="/smart-board" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isSmartBoardActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">developer_board</span>
           <span className="text-xs">Smart Board</span>
         </Link>
-        <Link href="/community" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isCommunityActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href="/community" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isCommunityActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">groups</span>
           <span className="text-xs">Community</span>
         </Link>
-        <Link href="/podcasts" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isPodcastsActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href="/podcasts" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isPodcastsActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">podcasts</span>
           <span className="text-xs">Podcasts</span>
         </Link>
-        <Link href="/profile" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isProfileActive ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
+        <Link href="/profile" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isProfileActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
           <span className="material-symbols-outlined text-sm">person</span>
           <span className="text-xs">Profile</span>
         </Link>
@@ -149,6 +149,7 @@ export default function Sidebar({
       <div className="mt-auto space-y-1 border-t border-white/5 pt-4">
         <button
           onClick={handleRaiseHandClick}
+          title="Ask your teacher a live question"
           className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs"
         >
           ✋ Raise Hand

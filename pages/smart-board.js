@@ -292,7 +292,35 @@ export default function SmartBoardPage() {
                       
                       {/* Visual Slide background representation */}
                       <div className="aspect-[4/3] relative">
-                        <img src={currentSlide.img} alt="Concept diagram" className="w-full h-full object-cover opacity-35" />
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.06) 0%, rgba(13,13,26,0.95) 70%)' }}>
+                          <svg viewBox="0 0 600 340" className="w-full h-full p-6" style={{ filter: 'drop-shadow(0 0 20px rgba(34,197,94,0.1))' }}>
+                            <circle cx="85" cy="55" r="32" fill="#FBBF24" opacity="0.85" />
+                            <text x="85" y="59" textAnchor="middle" fill="#78350F" fontSize="10" fontWeight="600">Sun</text>
+                            <line x1="117" y1="67" x2="175" y2="115" stroke="#FBBF24" strokeWidth="1.5" strokeDasharray="5,3" opacity="0.5" />
+                            <text x="152" y="85" fill="#FDE68A" fontSize="8" opacity="0.7">Light Energy</text>
+                            <ellipse cx="300" cy="165" rx="115" ry="65" fill="rgba(34,197,94,0.1)" stroke="#22C55E" strokeWidth="1.2" />
+                            <text x="300" y="145" textAnchor="middle" fill="#4ADE80" fontSize="12" fontWeight="700">Chloroplast</text>
+                            <text x="300" y="165" textAnchor="middle" fill="#86EFAC" fontSize="9">Light-Dependent Reactions</text>
+                            <text x="300" y="185" textAnchor="middle" fill="#BBF7D0" fontSize="8" opacity="0.7">Calvin Cycle</text>
+                            <rect x="25" y="170" width="72" height="32" rx="7" fill="rgba(59,130,246,0.12)" stroke="#3B82F6" strokeWidth="0.8" />
+                            <text x="61" y="185" textAnchor="middle" fill="#93C5FD" fontSize="9" fontWeight="600">H₂O</text>
+                            <text x="61" y="196" textAnchor="middle" fill="#60A5FA" fontSize="7">Water</text>
+                            <line x1="97" y1="186" x2="185" y2="165" stroke="#3B82F6" strokeWidth="1.2" opacity="0.5" />
+                            <rect x="25" y="220" width="72" height="32" rx="7" fill="rgba(156,163,175,0.1)" stroke="#9CA3AF" strokeWidth="0.8" />
+                            <text x="61" y="235" textAnchor="middle" fill="#D1D5DB" fontSize="9" fontWeight="600">CO₂</text>
+                            <text x="61" y="246" textAnchor="middle" fill="#9CA3AF" fontSize="7">Carbon Dioxide</text>
+                            <line x1="97" y1="236" x2="185" y2="185" stroke="#9CA3AF" strokeWidth="1.2" opacity="0.5" />
+                            <rect x="490" y="130" width="88" height="36" rx="7" fill="rgba(251,191,36,0.1)" stroke="#FBBF24" strokeWidth="0.8" />
+                            <text x="534" y="147" textAnchor="middle" fill="#FDE68A" fontSize="9" fontWeight="600">C₆H₁₂O₆</text>
+                            <text x="534" y="159" textAnchor="middle" fill="#FCD34D" fontSize="7">Glucose</text>
+                            <line x1="415" y1="155" x2="490" y2="148" stroke="#FBBF24" strokeWidth="1.2" opacity="0.5" />
+                            <rect x="490" y="185" width="88" height="36" rx="7" fill="rgba(34,197,94,0.1)" stroke="#22C55E" strokeWidth="0.8" />
+                            <text x="534" y="202" textAnchor="middle" fill="#4ADE80" fontSize="9" fontWeight="600">O₂</text>
+                            <text x="534" y="214" textAnchor="middle" fill="#86EFAC" fontSize="7">Oxygen</text>
+                            <line x1="415" y1="175" x2="490" y2="200" stroke="#22C55E" strokeWidth="1.2" opacity="0.5" />
+                            <text x="300" y="310" textAnchor="middle" fill="#6B7280" fontSize="9" fontStyle="italic">6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂</text>
+                          </svg>
+                        </div>
                         
                         {/* Centered slide content overlays */}
                         <div className="absolute inset-0 p-8 flex flex-col justify-between bg-gradient-to-t from-[#0d0d1a] via-[#0d0d1a]/50 to-transparent">
@@ -432,7 +460,7 @@ export default function SmartBoardPage() {
             </div>
 
             {/* Right Column: Sidebar Medical Flashcard labelings */}
-            <div className={`hidden lg:flex flex-col w-[360px] border-l border-white/5 bg-surface1/60 backdrop-blur-2xl h-full shrink-0 p-4 justify-between space-y-4 transition-all duration-300 ${showTour && SMART_BOARD_TOUR_STEPS[tourStep].target === 'flashcard-panel' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
+            <div className={`hidden lg:flex flex-col w-[360px] border-l border-white/12 bg-surface1/60 backdrop-blur-2xl h-full shrink-0 p-4 justify-between space-y-4 transition-all duration-300 ${showTour && SMART_BOARD_TOUR_STEPS[tourStep].target === 'flashcard-panel' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`} style={{ boxShadow: 'inset 4px 0 12px rgba(0,0,0,0.15)' }}>
               
               {/* Flashcard Header */}
               <div className="flex justify-between items-center pb-3 border-b border-white/5 shrink-0">
