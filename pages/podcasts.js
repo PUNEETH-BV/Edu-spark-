@@ -6,12 +6,32 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 
+const PODCASTS_TOUR_STEPS = [
+  {
+    target: 'podcast-modules',
+    title: '🧬 Course Module Podcasts',
+    text: 'Listen to conversational AI dialogues discussing course subjects, core concepts, and key definitions in an easy-to-understand format.'
+  },
+  {
+    target: 'podcast-library',
+    title: '🎙️ Lecture Audios Library',
+    text: 'Generate customized audio overviews or fast summaries for any video or document you ingested in the classroom.'
+  },
+  {
+    target: 'stats-container',
+    title: '📊 Podcast Stats & Progress',
+    text: 'Track the total number of course subjects and generated episodes available to listen to anytime.'
+  }
+];
+
 export default function PodcastsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [videos, setVideos] = useState([]);
   const [loadingVids, setLoadingVids] = useState(true);
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   // Immersive player states
   const [activeEpisode, setActiveEpisode] = useState(null); // { id, title, type, subject, script }
@@ -57,6 +77,17 @@ export default function PodcastsPage() {
       stopSpeech();
     };
   }, [user]);
+
+  // Auto show tour for new visitors to the podcasts page
+  useEffect(() => {
+    if (user && videos.length > 0) {
+      const visited = localStorage.getItem('is_new_podcasts_tour');
+      if (!visited) {
+        setShowTour(true);
+        setTourStep(0);
+      }
+    }
+  }, [user, videos]);
 
   async function fetchVideos() {
     setLoadingVids(true);
@@ -290,114 +321,127 @@ export default function PodcastsPage() {
                 Listen to conversational AI-generated dialogues explaining complex modules, deep-dive lectures, or rapid summaries.
               </p>
             </div>
-            {/* Stats row */}
-            <div className="flex gap-2">
-              <div className="glass px-4 py-2 rounded-xl border border-white/5 flex flex-col justify-center">
-                <span className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Modules</span>
-                <span className="text-sm font-black text-purple font-mono">{uniqueModules.length}</span>
+            {/* Stats row & help */}
+            <div className="flex items-center gap-3">
+              <div className={`flex gap-2 transition-all duration-300 ${showTour && PODCASTS_TOUR_STEPS[tourStep].target === 'stats-container' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-xl bg-[#0d0d1a] p-1' : ''}`}>
+                <div className="glass px-4 py-2 rounded-xl border border-white/5 flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Modules</span>
+                  <span className="text-sm font-black text-purple font-mono">{uniqueModules.length}</span>
+                </div>
+                <div className="glass px-4 py-2 rounded-xl border border-white/5 flex flex-col justify-center">
+                  <span className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Episodes</span>
+                  <span className="text-sm font-black text-blue font-mono">{videos.length * 2 + uniqueModules.length}</span>
+                </div>
               </div>
-              <div className="glass px-4 py-2 rounded-xl border border-white/5 flex flex-col justify-center">
-                <span className="text-[9px] uppercase tracking-wider text-text-muted font-bold">Episodes</span>
-                <span className="text-sm font-black text-blue font-mono">{videos.length * 2 + uniqueModules.length}</span>
-              </div>
+              <button
+                onClick={() => { setShowTour(true); setTourStep(0); }}
+                className="p-2.5 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative"
+                title="Help Podcast Tour"
+              >
+                <span className="material-symbols-outlined text-sm">help_outline</span>
+              </button>
             </div>
           </div>
 
           {/* Section: Course Modules Podcasts */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-purple text-lg">folder_open</span>
-              <h2 className="text-lg font-bold font-display text-text-primary">Subject Modules Overviews</h2>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {uniqueModules.map(mod => {
-                // Pick a card color scheme based on subject
-                let bgGradient = 'from-[#7c3aed]/20 to-[#3b82f6]/20 border-purple/30';
-                let tagColor = 'badge-purple';
-                let icon = '💻';
-                if (mod.subject.toLowerCase().includes('machine') || mod.subject.toLowerCase().includes('learning')) {
-                  bgGradient = 'from-[#3b82f6]/20 to-[#06b6d4]/20 border-blue/30';
-                  tagColor = 'badge-blue';
-                  icon = '🧠';
-                } else if (mod.subject.toLowerCase().includes('gene') || mod.subject.toLowerCase().includes('biology')) {
-                  bgGradient = 'from-[#059669]/20 to-[#10b981]/20 border-emerald/30';
-                  tagColor = 'badge-green';
-                  icon = '🧬';
-                }
-                
-                return (
-                  <div key={mod.id} className={`glass p-5 rounded-2xl border flex flex-col justify-between h-[180px] hover:scale-[1.01] transition-transform ${bgGradient}`}>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className={`badge ${tagColor} text-[8px] uppercase tracking-wider font-bold`}>Module Podcast</span>
-                        <span className="text-xl">{icon}</span>
+          <div className={`transition-all duration-300 ${showTour && PODCASTS_TOUR_STEPS[tourStep].target === 'podcast-modules' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-2xl bg-[#0d0d1a] p-2' : ''}`}>
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-purple text-lg">folder_open</span>
+                <h2 className="text-lg font-bold font-display text-text-primary">Subject Modules Overviews</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {uniqueModules.map(mod => {
+                  // Pick a card color scheme based on subject
+                  let bgGradient = 'from-[#7c3aed]/20 to-[#3b82f6]/20 border-purple/30';
+                  let tagColor = 'badge-purple';
+                  let icon = '💻';
+                  if (mod.subject.toLowerCase().includes('machine') || mod.subject.toLowerCase().includes('learning')) {
+                    bgGradient = 'from-[#3b82f6]/20 to-[#06b6d4]/20 border-blue/30';
+                    tagColor = 'badge-blue';
+                    icon = '🧠';
+                  } else if (mod.subject.toLowerCase().includes('gene') || mod.subject.toLowerCase().includes('biology')) {
+                    bgGradient = 'from-[#059669]/20 to-[#10b981]/20 border-emerald/30';
+                    tagColor = 'badge-green';
+                    icon = '🧬';
+                  }
+                  
+                  return (
+                    <div key={mod.id} className={`glass p-5 rounded-2xl border flex flex-col justify-between h-[180px] hover:scale-[1.01] transition-transform ${bgGradient}`}>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <span className={`badge ${tagColor} text-[8px] uppercase tracking-wider font-bold`}>Module Podcast</span>
+                          <span className="text-xl">{icon}</span>
+                        </div>
+                        <h3 className="font-bold text-sm text-text-primary leading-tight">{mod.subject} Course Summary</h3>
+                        <p className="text-[10px] text-text-muted line-clamp-2">
+                          A comprehensive dialogue discussing key terms, overarching systems, and real-world implications of {mod.subject}.
+                        </p>
                       </div>
-                      <h3 className="font-bold text-sm text-text-primary leading-tight">{mod.subject} Course Summary</h3>
-                      <p className="text-[10px] text-text-muted line-clamp-2">
-                        A comprehensive dialogue discussing key terms, overarching systems, and real-world implications of {mod.subject}.
-                      </p>
+                      
+                      <button
+                        onClick={() => handlePlayPodcast(mod.vidRef, 'module')}
+                        className="btn-primary py-2 w-full text-xs font-bold rounded-xl flex items-center justify-center gap-2 mt-4"
+                      >
+                        <span>▶️</span> Listen Module Podcast
+                      </button>
                     </div>
-                    
-                    <button
-                      onClick={() => handlePlayPodcast(mod.vidRef, 'module')}
-                      className="btn-primary py-2 w-full text-xs font-bold rounded-xl flex items-center justify-center gap-2 mt-4"
-                    >
-                      <span>▶️</span> Listen Module Podcast
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
 
           {/* Section: Lecture Episodes Podcasts */}
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-blue text-lg">play_circle</span>
-              <h2 className="text-lg font-bold font-display text-text-primary">Lecture Audios Library</h2>
-            </div>
+          <div className={`transition-all duration-300 ${showTour && PODCASTS_TOUR_STEPS[tourStep].target === 'podcast-library' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-2xl bg-[#0d0d1a] p-2' : ''}`}>
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-blue text-lg">play_circle</span>
+                <h2 className="text-lg font-bold font-display text-text-primary">Lecture Audios Library</h2>
+              </div>
 
-            <div className="glass rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden">
-              {videos.map(vid => (
-                <div key={vid.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
-                  <div className="flex items-center gap-4">
-                    {/* Video Thumbnail */}
-                    <div className="w-16 h-12 rounded-lg bg-surface2 overflow-hidden shrink-0 border border-white/10 relative">
-                      {vid.thumbnail ? (
-                        <img src={vid.thumbnail} alt={vid.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-text-muted font-bold">Vid</div>
-                      )}
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-xs">🎙️</div>
+              <div className="glass rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden">
+                {videos.map(vid => (
+                  <div key={vid.id} className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:bg-white/[0.01] transition-colors">
+                    <div className="flex items-center gap-4">
+                      {/* Video Thumbnail */}
+                      <div className="w-16 h-12 rounded-lg bg-surface2 overflow-hidden shrink-0 border border-white/10 relative">
+                        {vid.thumbnail ? (
+                          <img src={vid.thumbnail} alt={vid.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-text-muted font-bold">Vid</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center text-xs">🎙️</div>
+                      </div>
+                      {/* Metadata */}
+                      <div className="space-y-1">
+                        <span className="badge badge-purple text-[8px] uppercase tracking-wider font-semibold">{vid.subject || 'General'}</span>
+                        <h4 className="font-bold text-xs text-text-primary line-clamp-1 leading-snug">{vid.title}</h4>
+                        <p className="text-[10px] text-text-muted font-medium">Taught by AI {vid.expert_role || 'Specialist'}</p>
+                      </div>
                     </div>
-                    {/* Metadata */}
-                    <div className="space-y-1">
-                      <span className="badge badge-purple text-[8px] uppercase tracking-wider font-semibold">{vid.subject || 'General'}</span>
-                      <h4 className="font-bold text-xs text-text-primary line-clamp-1 leading-snug">{vid.title}</h4>
-                      <p className="text-[10px] text-text-muted font-medium">Taught by AI {vid.expert_role || 'Specialist'}</p>
+
+                    {/* Play Buttons */}
+                    <div className="flex gap-2 w-full md:w-auto">
+                      <button
+                        onClick={() => handlePlayPodcast(vid, 'lecture')}
+                        className="flex-1 md:flex-none btn-primary py-2 px-4 text-[10px] font-bold rounded-xl flex items-center justify-center gap-1.5"
+                      >
+                        <span>▶️</span> Full Overview
+                      </button>
+                      <button
+                        onClick={() => handlePlayPodcast(vid, 'summary')}
+                        className="flex-1 md:flex-none text-[10px] text-text-muted hover:text-text-primary border border-white/5 bg-surface1/60 px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 hover:bg-surface1/95 transition-colors font-bold"
+                      >
+                        <span>⚡</span> Fast Summary
+                      </button>
                     </div>
                   </div>
-
-                  {/* Play Buttons */}
-                  <div className="flex gap-2 w-full md:w-auto">
-                    <button
-                      onClick={() => handlePlayPodcast(vid, 'lecture')}
-                      className="flex-1 md:flex-none btn-primary py-2 px-4 text-[10px] font-bold rounded-xl flex items-center justify-center gap-1.5"
-                    >
-                      <span>▶️</span> Full Overview
-                    </button>
-                    <button
-                      onClick={() => handlePlayPodcast(vid, 'summary')}
-                      className="flex-1 md:flex-none text-[10px] text-text-muted hover:text-text-primary border border-white/5 bg-surface1/60 px-4 py-2 rounded-xl flex items-center justify-center gap-1.5 hover:bg-surface1/95 transition-colors font-bold"
-                    >
-                      <span>⚡</span> Fast Summary
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          </div>
         </main>
       </div>
 
@@ -625,6 +669,63 @@ export default function PodcastsPage() {
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* New User Tour Overlay */}
+      {showTour && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.setItem('is_new_podcasts_tour', 'true'); }} />
+      )}
+
+      {/* New User Tour Dialog Card */}
+      {showTour && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+            <button 
+              onClick={() => { setShowTour(false); localStorage.setItem('is_new_podcasts_tour', 'true'); }} 
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                🚀
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-sm text-text-primary">{PODCASTS_TOUR_STEPS[tourStep].title}</h3>
+                <span className="text-[10px] text-text-muted font-medium">Podcasts Tour · Step {tourStep + 1} of {PODCASTS_TOUR_STEPS.length}</span>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-text-muted">
+              {PODCASTS_TOUR_STEPS[tourStep].text}
+            </p>
+            <div className="flex justify-between items-center gap-2 pt-2">
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep > 0) setTourStep(tourStep - 1);
+                }} 
+                disabled={tourStep === 0}
+                className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
+              >
+                Back
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep < PODCASTS_TOUR_STEPS.length - 1) {
+                    setTourStep(tourStep + 1);
+                  } else {
+                    setShowTour(false);
+                    localStorage.setItem('is_new_podcasts_tour', 'true');
+                  }
+                }} 
+                className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+              >
+                {tourStep === PODCASTS_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
+              </button>
+            </div>
           </div>
         </div>
       )}

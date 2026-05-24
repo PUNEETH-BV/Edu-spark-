@@ -88,6 +88,24 @@ function getLevenshteinDistance(a, b) {
   return matrix[b.length][a.length];
 }
 
+const SMART_BOARD_TOUR_STEPS = [
+  {
+    target: 'tab-control',
+    title: '📝 Canvas & Study Labs',
+    text: "Switch between visual slide presentations ('Smart Board') and real-time interactive simulations ('Study Lab')."
+  },
+  {
+    target: 'convert-btn',
+    title: '🎥 Convert to Video Lesson',
+    text: 'Compile your interactive canvas slides directly into an AI video lesson segment to study later in the classroom.'
+  },
+  {
+    target: 'flashcard-panel',
+    title: '🃏 Vocabulary & Labeling Flashcards',
+    text: 'Test your knowledge on key diagrams, check spelling distance metrics with real-time feedback, and listen to audio pronunciation prompts.'
+  }
+];
+
 export default function SmartBoardPage() {
   const router = useRouter();
   const { user, profile, loading, signOut } = useAuth();
@@ -96,6 +114,8 @@ export default function SmartBoardPage() {
   const [slideIndex, setSlideIndex] = useState(0);
   const [converting, setConverting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
   
   // Photosynthesis Lab State
   const [lightIntensity, setLightIntensity] = useState(50);
@@ -115,6 +135,17 @@ export default function SmartBoardPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Auto show tour for new visitors to the smart board page
+  useEffect(() => {
+    if (user && profile) {
+      const visited = localStorage.getItem('is_new_smart_board_tour');
+      if (!visited) {
+        setShowTour(true);
+        setTourStep(0);
+      }
+    }
+  }, [user, profile]);
 
   const handleNextSlide = () => {
     setSlideIndex(prev => (prev + 1) % PRESENTATION_SLIDES.length);
@@ -208,6 +239,13 @@ export default function SmartBoardPage() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => { setShowTour(true); setTourStep(0); }}
+                className="p-2 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative mr-1"
+                title="Help Onboarding Tour"
+              >
+                <span className="material-symbols-outlined text-sm">help_outline</span>
+              </button>
               <Link href="/dashboard" className="btn-secondary py-1.5 px-4 rounded-xl text-xs font-bold">
                 Dashboard
               </Link>
@@ -221,7 +259,7 @@ export default function SmartBoardPage() {
               
               {/* Toggles and converter */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-6 shrink-0">
-                <div className="flex p-1 bg-surface2/50 rounded-xl border border-white/5 gap-1 select-none">
+                <div className={`flex p-1 bg-surface2/50 rounded-xl border border-white/5 gap-1 select-none transition-all duration-300 ${showTour && SMART_BOARD_TOUR_STEPS[tourStep].target === 'tab-control' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
                   <button
                     onClick={() => setActiveTab('board')}
                     className={`text-xs px-4 py-2 font-bold rounded-lg transition-all ${activeTab === 'board' ? 'bg-purple/20 text-[#c4b5fd]' : 'text-text-muted'}`}
@@ -239,7 +277,7 @@ export default function SmartBoardPage() {
                 <button
                   onClick={handleConvertVideo}
                   disabled={converting}
-                  className="btn-primary py-2 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg"
+                  className={`btn-primary py-2 px-4 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-lg transition-all duration-300 ${showTour && SMART_BOARD_TOUR_STEPS[tourStep].target === 'convert-btn' ? 'ring-4 ring-purple glow-purple z-50 relative' : ''}`}
                 >
                   <span className="material-symbols-outlined text-xs">video_file</span>
                   <span>{converting ? 'Processing...' : 'Convert to Video'}</span>
@@ -394,7 +432,7 @@ export default function SmartBoardPage() {
             </div>
 
             {/* Right Column: Sidebar Medical Flashcard labelings */}
-            <div className="hidden lg:flex flex-col w-[360px] border-l border-white/5 bg-surface1/60 backdrop-blur-2xl h-full shrink-0 p-4 justify-between space-y-4">
+            <div className={`hidden lg:flex flex-col w-[360px] border-l border-white/5 bg-surface1/60 backdrop-blur-2xl h-full shrink-0 p-4 justify-between space-y-4 transition-all duration-300 ${showTour && SMART_BOARD_TOUR_STEPS[tourStep].target === 'flashcard-panel' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
               
               {/* Flashcard Header */}
               <div className="flex justify-between items-center pb-3 border-b border-white/5 shrink-0">
@@ -485,6 +523,62 @@ export default function SmartBoardPage() {
           </div>
         </main>
       </div>
+      {/* New User Tour Overlay */}
+      {showTour && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.setItem('is_new_smart_board_tour', 'true'); }} />
+      )}
+
+      {/* New User Tour Dialog Card */}
+      {showTour && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+            <button 
+              onClick={() => { setShowTour(false); localStorage.setItem('is_new_smart_board_tour', 'true'); }} 
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                🚀
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-sm text-text-primary">{SMART_BOARD_TOUR_STEPS[tourStep].title}</h3>
+                <span className="text-[10px] text-text-muted font-medium">Smart Board Tour · Step {tourStep + 1} of {SMART_BOARD_TOUR_STEPS.length}</span>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-text-muted">
+              {SMART_BOARD_TOUR_STEPS[tourStep].text}
+            </p>
+            <div className="flex justify-between items-center gap-2 pt-2">
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep > 0) setTourStep(tourStep - 1);
+                }} 
+                disabled={tourStep === 0}
+                className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
+              >
+                Back
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep < SMART_BOARD_TOUR_STEPS.length - 1) {
+                    setTourStep(tourStep + 1);
+                  } else {
+                    setShowTour(false);
+                    localStorage.setItem('is_new_smart_board_tour', 'true');
+                  }
+                }} 
+                className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+              >
+                {tourStep === SMART_BOARD_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

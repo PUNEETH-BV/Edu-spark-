@@ -28,6 +28,24 @@ const TABS = [
   { key: 'notes',      label: '📝 Notes' },
 ];
 
+const CLASSROOM_TOUR_STEPS = [
+  {
+    target: 'classroom-player',
+    title: '📺 Video Player & Document Reader',
+    text: 'Watch video lectures or read documents here. The AI automatically syncs content with your notes and transcripts.'
+  },
+  {
+    target: 'study-tabs',
+    title: '🎯 AI Study Tools',
+    text: 'Unlock interactive features: take auto-generated Quizzes, study Flashcards, read structured Notes, view visual Mind Maps, and listen to AI Podcasts.'
+  },
+  {
+    target: 'raise-hand-btn',
+    title: '✋ Ask AI Expert',
+    text: "Stuck on a concept? Click 'Raise Hand' to ask questions, verify details, and talk directly with your dedicated AI learning assistant."
+  }
+];
+
 export default function PlayerPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -39,6 +57,9 @@ export default function PlayerPage() {
   const [loadingVid, setLoadingVid] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [activeTab,   setActiveTab]   = useState('segments');
+  
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
   
   // Right sidebar — starts CLOSED; only opens when user clicks "Raise Hand" or a sidebar button
   // ✅ FIX: was useState(true) which caused RaiseHandPanel to mount immediately and call onPause()
@@ -91,6 +112,17 @@ export default function PlayerPage() {
   useEffect(() => {
     if (id && user) loadVideo();
   }, [id, user, loadVideo]);
+
+  // Auto show tour for new visitors to the classroom
+  useEffect(() => {
+    if (user && video) {
+      const visited = localStorage.getItem('is_new_classroom_tour');
+      if (!visited) {
+        setShowTour(true);
+        setTourStep(0);
+      }
+    }
+  }, [user, video]);
 
   // Simulated AI-friend typing indicator with proper cleanup
   useEffect(() => {
@@ -292,7 +324,7 @@ export default function PlayerPage() {
                 setShowRightSidebar(true);
                 router.push(`/player/${id}?sidebar=expert`, undefined, { shallow: true });
               }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs"
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'raise-hand-btn' ? 'ring-4 ring-purple glow-purple z-50 relative' : ''}`}
             >
               ✋ Raise Hand
             </button>
@@ -316,6 +348,13 @@ export default function PlayerPage() {
               </Link>
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => { setShowTour(true); setTourStep(0); }}
+                className="p-2 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative mr-1"
+                title="Help Onboarding Tour"
+              >
+                <span className="material-symbols-outlined text-sm">help_outline</span>
+              </button>
               <Link href="/dashboard" className="btn-secondary py-1.5 px-4 rounded-xl text-xs font-bold">
                 Dashboard
               </Link>
@@ -326,55 +365,57 @@ export default function PlayerPage() {
           <div className="flex-1 flex overflow-hidden">
             <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
               
-              {['pdf', 'document', 'website'].includes(video.platform) ? (
-                <DocumentReader
-                  video={video}
-                  segments={segments}
-                  currentTime={currentTime}
-                  onSeek={handleSeek}
-                />
-              ) : (
-                <>
-                  {/* Main Player Component */}
-                  <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border border-white/5">
-                    {platform?.platform === 'youtube' ? (
-                      <YouTubePlayer
-                        ref={playerRef}
-                        videoId={platform.videoId}
-                        onTimeUpdate={handleTimeUpdate}
-                      />
-                    ) : (
-                      <HTML5Player
-                        ref={playerRef}
-                        url={video.url}
-                        onTimeUpdate={handleTimeUpdate}
-                      />
-                    )}
-
-                    {/* Analyzing overlay — shown while AI processes a new video */}
-                    {analyzing && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20"
-                        style={{ background: 'rgba(13,13,26,0.85)', backdropFilter: 'blur(8px)' }}
-                      >
-                        <div className="spinner" style={{ width: 48, height: 48 }} />
-                        <div className="text-center space-y-1">
-                          <p className="font-bold text-text-primary text-sm">Analyzing video with AI…</p>
-                          <p className="text-xs text-text-muted">Extracting topics, segments &amp; generating study materials</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Segment Timeline Blocks */}
-                  <SegmentTimeline
+              <div className={`transition-all duration-300 ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'classroom-player' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-1' : ''}`}>
+                {['pdf', 'document', 'website'].includes(video.platform) ? (
+                  <DocumentReader
+                    video={video}
                     segments={segments}
                     currentTime={currentTime}
-                    watchedSeconds={watchedSeconds}
-                    duration={video.duration}
                     onSeek={handleSeek}
                   />
-                </>
-              )}
+                ) : (
+                  <>
+                    {/* Main Player Component */}
+                    <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border border-white/5">
+                      {platform?.platform === 'youtube' ? (
+                        <YouTubePlayer
+                          ref={playerRef}
+                          videoId={platform.videoId}
+                          onTimeUpdate={handleTimeUpdate}
+                        />
+                      ) : (
+                        <HTML5Player
+                          ref={playerRef}
+                          url={video.url}
+                          onTimeUpdate={handleTimeUpdate}
+                        />
+                      )}
+
+                      {/* Analyzing overlay — shown while AI processes a new video */}
+                      {analyzing && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20"
+                          style={{ background: 'rgba(13,13,26,0.85)', backdropFilter: 'blur(8px)' }}
+                        >
+                          <div className="spinner" style={{ width: 48, height: 48 }} />
+                          <div className="text-center space-y-1">
+                            <p className="font-bold text-text-primary text-sm">Analyzing video with AI…</p>
+                            <p className="text-xs text-text-muted">Extracting topics, segments &amp; generating study materials</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Segment Timeline Blocks */}
+                    <SegmentTimeline
+                      segments={segments}
+                      currentTime={currentTime}
+                      watchedSeconds={watchedSeconds}
+                      duration={video.duration}
+                      onSeek={handleSeek}
+                    />
+                  </>
+                )}
+              </div>
 
               {/* Subject Title & Metadata details */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-4">
@@ -427,7 +468,7 @@ export default function PlayerPage() {
               </div>
 
               {/* Study Tabs components */}
-              <div className="space-y-4 pt-4 border-t border-white/5">
+              <div className={`space-y-4 pt-4 border-t border-white/5 transition-all duration-300 ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'study-tabs' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-[20px] bg-[#0d0d1a] p-3' : ''}`}>
                 <div className="flex gap-1 overflow-x-auto pb-2 border-b border-white/5">
                   {TABS.map(tab => (
                     <button
@@ -585,6 +626,63 @@ export default function PlayerPage() {
             )}
 
           </div>
+
+          {/* New User Tour Overlay */}
+          {showTour && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.setItem('is_new_classroom_tour', 'true'); }} />
+          )}
+
+          {/* New User Tour Dialog Card */}
+          {showTour && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+              <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+                <button 
+                  onClick={() => { setShowTour(false); localStorage.setItem('is_new_classroom_tour', 'true'); }} 
+                  className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+                >
+                  ✕
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                    🚀
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-sm text-text-primary">{CLASSROOM_TOUR_STEPS[tourStep].title}</h3>
+                    <span className="text-[10px] text-text-muted font-medium">Classroom Tour · Step {tourStep + 1} of {CLASSROOM_TOUR_STEPS.length}</span>
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  {CLASSROOM_TOUR_STEPS[tourStep].text}
+                </p>
+                <div className="flex justify-between items-center gap-2 pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (tourStep > 0) setTourStep(tourStep - 1);
+                    }} 
+                    disabled={tourStep === 0}
+                    className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (tourStep < CLASSROOM_TOUR_STEPS.length - 1) {
+                        setTourStep(tourStep + 1);
+                      } else {
+                        setShowTour(false);
+                        localStorage.setItem('is_new_classroom_tour', 'true');
+                      }
+                    }} 
+                    className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+                  >
+                    {tourStep === CLASSROOM_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </>

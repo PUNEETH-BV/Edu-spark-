@@ -39,6 +39,34 @@ const ROADMAP_TEMPLATES = {
   }
 };
 
+const DASHBOARD_TOUR_STEPS = [
+  {
+    target: 'search-bar',
+    title: '🏆 Resource Ranker Search',
+    text: 'Type any skill or topic you want to learn here. Our point-scoring algorithm evaluates official docs, video tutorials, and blogs to curate the best paths for you.'
+  },
+  {
+    target: 'ingestion-hub',
+    title: '📄 Multi-Source Ingestor',
+    text: 'Have your own study materials? Ingest PDF files, copy-paste lecture notes, import documentation website URLs, or add direct YouTube video links to create your classroom.'
+  },
+  {
+    target: 'active-roadmaps',
+    title: '📚 Active Roadmaps',
+    text: 'Access your currently active courses here. Track your learning progress, completed sections, and resume study blocks instantly.'
+  },
+  {
+    target: 'recommends-feed',
+    title: '🎓 Recommended Courses',
+    text: 'Explore premium curated roadmaps validated by the community for hot topics like Next.js frontend development or Data Analytics.'
+  },
+  {
+    target: 'sidebar-nav',
+    title: '🧭 Sidebar Navigation',
+    text: 'Use the sidebar to jump to the AI Smart Board (whiteboard), Class Community, Podcasts library, and your Profile Achievements.'
+  }
+];
+
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth();
   const router = useRouter();
@@ -71,6 +99,7 @@ export default function Dashboard() {
   // Breakdown modal state
   const [breakdownRes, setBreakdownRes] = useState(null);
   const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -622,7 +651,9 @@ export default function Dashboard() {
       <div className="min-h-screen flex text-text-primary bg-[#0d0d1a]">
         
         {/* Sidebar Component */}
-        <Sidebar />
+        <div className={`transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'sidebar-nav' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-2xl bg-[#0d0d1a]' : ''}`}>
+          <Sidebar />
+        </div>
 
         {/* Main Frame */}
         <main className="flex-1 flex flex-col h-screen overflow-y-auto" style={{ minWidth: 0 }}>
@@ -638,7 +669,7 @@ export default function Dashboard() {
               
               {/* Resource Ranker Search Input */}
               <div 
-                className={`hidden md:flex flex-1 max-w-lg relative transition-all duration-300 ${showTour ? 'ring-4 ring-purple glow-purple z-50 rounded-xl bg-[#0d0d1a]' : ''}`}
+                className={`hidden md:flex flex-1 max-w-lg relative transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'search-bar' ? 'ring-4 ring-purple glow-purple z-50 rounded-xl bg-[#0d0d1a]' : ''}`}
                 onMouseEnter={() => setSearchHover(true)}
                 onMouseLeave={() => setSearchHover(false)}
               >
@@ -718,6 +749,13 @@ export default function Dashboard() {
                 <span className="material-symbols-outlined text-sm">notifications</span>
                 <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-pink-500 rounded-full" />
               </button>
+              <button
+                onClick={() => { setShowTour(true); setTourStep(0); }}
+                className="p-2 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative mr-1"
+                title="Help Onboarding Tour"
+              >
+                <span className="material-symbols-outlined text-sm">help_outline</span>
+              </button>
               <Link href="/profile" className="flex items-center gap-2 hover:opacity-85">
                 <div className="w-8 h-8 rounded-full border border-purple/30 bg-purple/10 flex items-center justify-center font-bold text-xs">
                   {(profile?.username || 'User')[0].toUpperCase()}
@@ -742,7 +780,7 @@ export default function Dashboard() {
             </section>
 
             {/* Mobile search bar */}
-            <div className={`md:hidden transition-all duration-300 ${showTour ? 'ring-4 ring-purple glow-purple z-50 relative rounded-xl bg-[#0d0d1a] p-1' : ''}`}>
+            <div className={`md:hidden transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'search-bar' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-xl bg-[#0d0d1a] p-1' : ''}`}>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   {searchLoading ? (
@@ -852,7 +890,7 @@ export default function Dashboard() {
               <div className="lg:col-span-8 space-y-8">
                 
                 {/* Active Roadmaps */}
-                <div className="space-y-4">
+                <div className={`space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'active-roadmaps' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-bold font-display text-text-primary">Active Roadmaps</h2>
                     <Link href="/player" className="text-xs text-purple font-semibold hover:underline">
@@ -919,7 +957,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Recommended Feed */}
-                <div className="space-y-4">
+                <div className={`space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'recommends-feed' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
                     <h2 className="text-lg font-bold font-display text-text-primary">Recommended for You</h2>
                     <span className="badge badge-purple text-[10px] font-bold">Reputation Ranked</span>
@@ -955,7 +993,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Multi-Source Ingest / NotebookLM Widget */}
-                <div className="glass rounded-[24px] p-5 border border-white/5 space-y-4">
+                <div className={`glass rounded-[24px] p-5 border border-white/5 space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'ingestion-hub' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-white/5 pb-3 gap-2">
                     <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-display">📥 Ingest Study Sources (NotebookLM)</h3>
                     <div className="flex gap-1 bg-surface1 p-1 rounded-lg border border-white/5">
@@ -1252,26 +1290,37 @@ export default function Dashboard() {
                     🚀
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-sm text-text-primary">EduSpark Platform Tour</h3>
-                    <span className="text-[10px] text-text-muted font-medium">Quick Onboarding · Step 1 of 1</span>
+                    <h3 className="font-display font-bold text-sm text-text-primary">{DASHBOARD_TOUR_STEPS[tourStep].title}</h3>
+                    <span className="text-[10px] text-text-muted font-medium">Dashboard Tour · Step {tourStep + 1} of {DASHBOARD_TOUR_STEPS.length}</span>
                   </div>
                 </div>
                 <p className="text-xs leading-relaxed text-text-muted">
-                  Welcome to your dashboard! To start learning, use the highlighted <strong className="text-purple-light">Resource Ranker Search Bar</strong>. 
-                  <br /><br />
-                  Type any topic (e.g. <em>"Python Basics"</em>, <em>"Machine Learning"</em>) and our point-scoring AI will find the best resources, score them out of 100, and generate your interactive classroom outline automatically!
+                  {DASHBOARD_TOUR_STEPS[tourStep].text}
                 </p>
-                <div className="flex gap-2 pt-2">
+                <div className="flex justify-between items-center gap-2 pt-2">
                   <button 
+                    type="button"
                     onClick={() => {
-                      setShowTour(false);
-                      localStorage.removeItem('is_new_user_tour');
-                      const input = document.querySelector('input[placeholder*="Search"]');
-                      if (input) input.focus();
+                      if (tourStep > 0) setTourStep(tourStep - 1);
                     }} 
-                    className="w-full btn-primary py-2.5 rounded-xl text-xs font-bold"
+                    disabled={tourStep === 0}
+                    className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
                   >
-                    Let's Try It! 🚀
+                    Back
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      if (tourStep < DASHBOARD_TOUR_STEPS.length - 1) {
+                        setTourStep(tourStep + 1);
+                      } else {
+                        setShowTour(false);
+                        localStorage.removeItem('is_new_user_tour');
+                      }
+                    }} 
+                    className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+                  >
+                    {tourStep === DASHBOARD_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
                   </button>
                 </div>
               </div>

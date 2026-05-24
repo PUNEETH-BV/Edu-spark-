@@ -6,6 +6,29 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import Sidebar from '@/components/Sidebar';
 
+const COMMUNITY_TOUR_STEPS = [
+  {
+    target: 'study-rooms',
+    title: '👥 Live Study Rooms',
+    text: 'Join active virtual workspaces with global classmates and AI tutors to co-work, share ideas, and stay motivated.'
+  },
+  {
+    target: 'trending-discussions',
+    title: '💬 Trending Discussions',
+    text: 'Browse ongoing forum threads or create your own topic to ask questions about core concepts or specific subjects.'
+  },
+  {
+    target: 'team-tools',
+    title: '🎦 Team Session Tools',
+    text: 'Instantly launch high-fidelity video meetings or chat groups to sync study roadmaps directly with your peers.'
+  },
+  {
+    target: 'activity-feed',
+    title: '⚡ Live Activity & Events',
+    text: 'Keep track of badges earned by classmates, and RSVP to upcoming workshops, hackathons, or sprints.'
+  }
+];
+
 export default function CommunityPage() {
   const router = useRouter();
   const { user, profile, loading, signOut } = useAuth();
@@ -13,10 +36,23 @@ export default function CommunityPage() {
   const [showNewTopic, setShowNewTopic] = useState(false);
   const [newTagName, setNewTagName] = useState('#General');
   const [newText, setNewText] = useState('');
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Auto show tour for new visitors to the community hub page
+  useEffect(() => {
+    if (user && profile) {
+      const visited = localStorage.getItem('is_new_community_tour');
+      if (!visited) {
+        setShowTour(true);
+        setTourStep(0);
+      }
+    }
+  }, [user, profile]);
   
   const [rooms, setRooms] = useState([
     { id: 1, title: 'MIT 6.006: Algorithms', participants: 14, tutors: 2, joined: false, img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop&q=60' },
@@ -79,6 +115,13 @@ export default function CommunityPage() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => { setShowTour(true); setTourStep(0); }}
+                className="p-2 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative mr-1"
+                title="Help Onboarding Tour"
+              >
+                <span className="material-symbols-outlined text-sm">help_outline</span>
+              </button>
               <Link href="/dashboard" className="btn-secondary py-1.5 px-4 rounded-xl text-xs font-bold">
                 Dashboard
               </Link>
@@ -102,7 +145,7 @@ export default function CommunityPage() {
               <div className="lg:col-span-8 space-y-8">
                 
                 {/* Live study rooms */}
-                <div className="space-y-4">
+                <div className={`space-y-4 transition-all duration-300 ${showTour && COMMUNITY_TOUR_STEPS[tourStep].target === 'study-rooms' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-[20px] bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
                     <h2 className="text-base font-bold font-display text-text-primary flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
@@ -146,7 +189,7 @@ export default function CommunityPage() {
                 </div>
 
                 {/* Trending discussions */}
-                <div className="space-y-4">
+                <div className={`space-y-4 transition-all duration-300 ${showTour && COMMUNITY_TOUR_STEPS[tourStep].target === 'trending-discussions' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-[20px] bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
                     <h2 className="text-base font-bold font-display text-text-primary">Trending Discussions</h2>
                     <button
@@ -223,7 +266,7 @@ export default function CommunityPage() {
                 </div>
 
                 {/* Team Session Tools Banner */}
-                <div className="glass rounded-[24px] p-6 border border-purple/35 relative overflow-hidden bg-gradient-to-r from-purple/10 to-[#12122a]">
+                <div className={`glass rounded-[24px] p-6 border border-purple/35 relative overflow-hidden bg-gradient-to-r from-purple/10 to-[#12122a] transition-all duration-300 ${showTour && COMMUNITY_TOUR_STEPS[tourStep].target === 'team-tools' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue/10 rounded-full blur-3xl" />
                   <div className="space-y-4 relative z-10">
                     <div>
@@ -255,7 +298,7 @@ export default function CommunityPage() {
               <div className="lg:col-span-4 space-y-8">
                 
                 {/* Activity Feed */}
-                <div className="glass rounded-[24px] p-5 border border-white/5 space-y-4">
+                <div className={`glass rounded-[24px] p-5 border border-white/5 space-y-4 transition-all duration-300 ${showTour && COMMUNITY_TOUR_STEPS[tourStep].target === 'activity-feed' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
                   <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
                     <span>⚡</span> Activity Feed
                   </h3>
@@ -314,6 +357,62 @@ export default function CommunityPage() {
           </div>
         </main>
       </div>
+      {/* New User Tour Overlay */}
+      {showTour && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.setItem('is_new_community_tour', 'true'); }} />
+      )}
+
+      {/* New User Tour Dialog Card */}
+      {showTour && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+            <button 
+              onClick={() => { setShowTour(false); localStorage.setItem('is_new_community_tour', 'true'); }} 
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                🚀
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-sm text-text-primary">{COMMUNITY_TOUR_STEPS[tourStep].title}</h3>
+                <span className="text-[10px] text-text-muted font-medium">Community Tour · Step {tourStep + 1} of {COMMUNITY_TOUR_STEPS.length}</span>
+              </div>
+            </div>
+            <p className="text-xs leading-relaxed text-text-muted">
+              {COMMUNITY_TOUR_STEPS[tourStep].text}
+            </p>
+            <div className="flex justify-between items-center gap-2 pt-2">
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep > 0) setTourStep(tourStep - 1);
+                }} 
+                disabled={tourStep === 0}
+                className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
+              >
+                Back
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (tourStep < COMMUNITY_TOUR_STEPS.length - 1) {
+                    setTourStep(tourStep + 1);
+                  } else {
+                    setShowTour(false);
+                    localStorage.setItem('is_new_community_tour', 'true');
+                  }
+                }} 
+                className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+              >
+                {tourStep === COMMUNITY_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
