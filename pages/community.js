@@ -55,8 +55,8 @@ export default function CommunityPage() {
   }, [user, profile]);
   
   const [rooms, setRooms] = useState([
-    { id: 1, title: 'MIT 6.006: Algorithms', participants: 14, tutors: 2, joined: false, img: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&auto=format&fit=crop&q=60' },
-    { id: 2, title: 'Ethics in Biotech', participants: 9, tutors: 1, joined: false, img: 'https://images.unsplash.com/photo-1532187643603-ba119ca4109e?w=400&auto=format&fit=crop&q=60' }
+    { id: 1, title: 'MIT 6.006: Algorithms', participants: 14, tutors: 2, joined: false, img: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400&auto=format&fit=crop&q=60' },
+    { id: 2, title: 'Ethics in Biotech', participants: 9, tutors: 1, joined: false, img: 'https://images.unsplash.com/photo-1576086213369-97a306d36557?w=400&auto=format&fit=crop&q=60' }
   ]);
 
   const [discussions, setDiscussions] = useState([
@@ -169,7 +169,7 @@ export default function CommunityPage() {
                           </span>
                         </div>
                         <div className="p-4 space-y-3">
-                          <h4 className="font-bold text-xs text-text-primary">{r.title}</h4>
+                          <h4 className="font-bold text-xs text-text-primary" style={{ textDecoration: 'none' }}>{r.title}</h4>
                           <div className="flex justify-between items-center text-[10px] text-text-muted font-mono font-medium">
                             <span>👥 {r.participants} participants</span>
                             <span>🤖 {r.tutors} AI Tutors</span>
