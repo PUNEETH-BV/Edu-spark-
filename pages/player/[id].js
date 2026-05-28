@@ -83,6 +83,17 @@ export default function PlayerPage() {
   const [addSourceError, setAddSourceError] = useState('');
   const [addSourceUrl, setAddSourceUrl] = useState('');
 
+  // ── Notebook Metadata & Auto-Init ──────────────────────────────────────────
+  const [notebookData, setNotebookData] = useState(null);
+  const [notebookLoading, setNotebookLoading] = useState(false);
+  const [initialPrompt, setInitialPrompt] = useState('');
+  
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingSubject, setIsEditingSubject] = useState(false);
+  const [editingTitleVal, setEditingTitleVal] = useState('');
+  const [editingSubjectVal, setEditingSubjectVal] = useState('');
+  const [chatInputValue, setChatInputValue] = useState('');
+
   // ── Command palette ────────────────────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
@@ -99,7 +110,12 @@ export default function PlayerPage() {
     async function load() {
       setDataLoading(true);
       const { data: vid } = await supabase.from('videos').select('*').eq('id', id).single();
-      if (vid) { setVideo(vid); setDuration(vid.duration || 0); }
+      if (vid) {
+        setVideo(vid);
+        setDuration(vid.duration || 0);
+        setEditingTitleVal(vid.title || '');
+        setEditingSubjectVal(vid.subject || 'General');
+      }
       const { data: segs } = await supabase.from('segments').select('*').eq('video_id', id).order('start_time');
       if (segs) setSegments(segs.map(s => ({ ...s, start: s.start_time, end: s.end_time })));
       // Load all user's videos as "sources"
@@ -112,6 +128,95 @@ export default function PlayerPage() {
     }
     load();
   }, [id, user]);
+
+  // ── Notebook Init Trigger ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!id || !video) return;
+
+    // Check localStorage cache first
+    const cached = localStorage.getItem(`notebook_init_${id}`);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setNotebookData(parsed);
+        return;
+      } catch (e) {
+        console.error('Failed to parse cached notebook metadata:', e);
+      }
+    }
+
+    async function initNotebook() {
+      setNotebookLoading(true);
+      try {
+        const res = await fetch('/api/notebook-init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoTitle: video.title,
+            subject: video.subject || 'General',
+            segments: segments || [],
+            content: video.content || '',
+            courseId: id,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setNotebookData(data);
+          localStorage.setItem(`notebook_init_${id}`, JSON.stringify(data));
+          
+          // Auto-update Supabase if the course currently has a generic title (like a URL)
+          const isGenericTitle = video.title.startsWith('http') || video.title.includes('youtube.com') || video.title.includes('youtu.be');
+          if (isGenericTitle && data.title?.title) {
+            await supabase
+              .from('videos')
+              .update({ title: data.title.title, subject: data.title.category })
+              .eq('id', id);
+            // Refresh states
+            setVideo(prev => ({ ...prev, title: data.title.title, subject: data.title.category }));
+            setEditingTitleVal(data.title.title);
+            setEditingSubjectVal(data.title.category);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-initialize notebook:', err);
+      } finally {
+        setNotebookLoading(false);
+      }
+    }
+    initNotebook();
+  }, [id, video?.id]);
+
+  // ── Save manual title & subject edits ──────────────────────────────────────
+  async function handleSaveManualEdit() {
+    if (!id || !user) return;
+    try {
+      const finalTitle = editingTitleVal.trim() || video.title;
+      const finalSubj = editingSubjectVal.trim() || video.subject || 'General';
+      const { data } = await supabase
+        .from('videos')
+        .update({ title: finalTitle, subject: finalSubj })
+        .eq('id', id)
+        .select()
+        .single();
+      if (data) {
+        setVideo(data);
+        // Also update local cache for notebookData title & category
+        const cached = localStorage.getItem(`notebook_init_${id}`);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (!parsed.title) parsed.title = {};
+            parsed.title.title = finalTitle;
+            parsed.title.category = finalSubj;
+            localStorage.setItem(`notebook_init_${id}`, JSON.stringify(parsed));
+            setNotebookData(parsed);
+          } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.error('Error updating title/subject:', err);
+    }
+  }
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -515,7 +620,7 @@ export default function PlayerPage() {
                 )}
               </div>
             ) : (
-              /* ── Chat / AI Summary (default) ────────────────────── */
+              /* ── Chat / AI Summary (default / NotebookLM workspace initial state) ── */
               <div style={{ padding: '32px', flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 800, margin: '0 auto', width: '100%' }}>
                 {/* Customize button */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
@@ -525,52 +630,313 @@ export default function PlayerPage() {
                   </button>
                 </div>
 
-                {/* Course title card */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
+                {/* Course title card (Inline Editable) */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 28 }}>
                   <div style={{
-                    width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-                    background: 'rgba(168,199,250,0.1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                    width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+                    background: 'rgba(168,199,250,0.1)', border: '1px solid rgba(168,199,250,0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
                   }}>
-                    {video.platform === 'youtube' ? '🎬' : '📄'}
+                    {notebookData?.title?.icon || (video.platform === 'youtube' ? '🎬' : '📄')}
                   </div>
-                  <div>
-                    <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, lineHeight: 1.35 }}>{video.title}</h1>
-                    <p style={{ fontSize: 13, color: '#9AA0A6', margin: '6px 0 0' }}>
-                      {segments.length} sources · {video.created_at ? new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
-                    </p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {isEditingSubject ? (
+                        <input
+                          value={editingSubjectVal}
+                          onChange={e => setEditingSubjectVal(e.target.value)}
+                          onBlur={() => { setIsEditingSubject(false); handleSaveManualEdit(); }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { setIsEditingSubject(false); handleSaveManualEdit(); }
+                            if (e.key === 'Escape') { setEditingSubjectVal(video.subject || 'General'); setIsEditingSubject(false); }
+                          }}
+                          autoFocus
+                          style={{
+                            background: '#252329', border: '1px solid #A8C7FA', color: '#A8C7FA',
+                            fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8,
+                            padding: '2px 8px', borderRadius: 4, outline: 'none', fontFamily: 'inherit'
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onClick={() => setIsEditingSubject(true)}
+                          style={{
+                            fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8,
+                            color: '#A8C7FA', background: 'rgba(168,199,250,0.08)',
+                            padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
+                            border: '1px solid rgba(168,199,250,0.15)', display: 'inline-flex', alignItems: 'center', gap: 4
+                          }}
+                          title="Click to edit subject"
+                        >
+                          {notebookData?.title?.category || video.subject || 'General'}
+                          <span className="material-symbols-outlined" style={{ fontSize: 10, opacity: 0.6 }}>edit</span>
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div style={{ marginTop: 8 }}>
+                      {isEditingTitle ? (
+                        <input
+                          value={editingTitleVal}
+                          onChange={e => setEditingTitleVal(e.target.value)}
+                          onBlur={() => { setIsEditingTitle(false); handleSaveManualEdit(); }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') { setIsEditingTitle(false); handleSaveManualEdit(); }
+                            if (e.key === 'Escape') { setEditingTitleVal(video.title); setIsEditingTitle(false); }
+                          }}
+                          autoFocus
+                          style={{
+                            width: '100%', background: '#252329', border: '1px solid #A8C7FA',
+                            color: '#E3E3E3', fontSize: 22, fontWeight: 600,
+                            padding: '4px 8px', borderRadius: 8, outline: 'none', fontFamily: 'inherit'
+                          }}
+                        />
+                      ) : (
+                        <h1
+                          onClick={() => setIsEditingTitle(true)}
+                          style={{
+                            fontSize: 22, fontWeight: 600, margin: 0, lineHeight: 1.35,
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, color: '#E3E3E3'
+                          }}
+                          title="Click to edit title"
+                        >
+                          {video.title}
+                          <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#9AA0A6', opacity: 0.5 }}>edit</span>
+                        </h1>
+                      )}
+                    </div>
+                    
+                    {notebookData?.title?.subtitle && (
+                      <p style={{ fontSize: 13, color: '#9AA0A6', margin: '6px 0 0', fontStyle: 'italic' }}>{notebookData.title.subtitle}</p>
+                    )}
                   </div>
                 </div>
 
-                {/* AI Summary */}
-                <div style={{
-                  fontSize: 15, lineHeight: 1.75, color: '#D1D1D1',
-                  padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <p style={{ margin: 0 }}>
-                    This course covers <strong style={{ color: '#E3E3E3' }}>{video.subject || 'key concepts'}</strong> across{' '}
-                    <strong style={{ color: '#E3E3E3' }}>{segments.length} chapters</strong>.{' '}
-                    {segments.length > 0 && <>Topics include <strong style={{ color: '#E3E3E3' }}>{segments.slice(0, 3).map(s => s.title).join(', ')}</strong>{segments.length > 3 ? `, and ${segments.length - 3} more sections` : ''}.</>}
-                    {' '}Use the <strong style={{ color: '#A8C7FA' }}>Studio panel</strong> on the right to generate quizzes, flashcards, mind maps, or start an AI conversation about the content.
-                  </p>
+                {/* AI generated summary / intelligence layer */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  {notebookLoading ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ height: 20, width: '90%', background: '#252329', borderRadius: 4, animation: 'shimmer 1.5s infinite' }} />
+                      <div style={{ height: 20, width: '95%', background: '#252329', borderRadius: 4, animation: 'shimmer 1.5s infinite', animationDelay: '0.1s' }} />
+                      <div style={{ height: 20, width: '60%', background: '#252329', borderRadius: 4, animation: 'shimmer 1.5s infinite', animationDelay: '0.2s' }} />
+                      
+                      <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '16px 0' }} />
+                      
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {[1,2,3].map(i => (
+                          <div key={i} style={{ height: 32, width: 80 + i*15, background: '#252329', borderRadius: 16, animation: 'shimmer 1.5s infinite', animationDelay: `${i*0.15}s` }} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : notebookData ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
+                      {/* Overview */}
+                      <div style={{
+                        fontSize: 15, lineHeight: 1.75, color: '#D1D1D1',
+                        paddingBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        <p style={{ margin: 0, fontWeight: 400 }}>
+                          {notebookData.summary?.overview}
+                        </p>
+                        {notebookData.title?.focus && (
+                          <p style={{ margin: '14px 0 0', fontSize: 13, color: '#9AA0A6', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#A8C7FA' }}>auto_awesome</span>
+                            <strong>Learning Focus:</strong> {notebookData.title.focus}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Clickable Topics and Questions Split Section */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+                        {/* Topics */}
+                        {notebookData.summary?.topics?.length > 0 && (
+                          <div>
+                            <h3 style={{ fontSize: 12, fontWeight: 600, color: '#9AA0A6', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Topics of interest</h3>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                              {notebookData.summary.topics.map((t, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setInitialPrompt(`Explain the topic of "${t}" in detail, including its key concepts and applications.`);
+                                    setActiveTool('chat');
+                                    setRightOpen(true);
+                                  }}
+                                  style={{
+                                    padding: '6px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                                    background: 'rgba(168,199,250,0.06)', border: '1px solid rgba(168,199,250,0.15)',
+                                    color: '#C2E7FF', cursor: 'pointer', transition: 'all 150ms'
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(168,199,250,0.12)'; e.currentTarget.style.borderColor = '#A8C7FA'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(168,199,250,0.06)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.15)'; }}
+                                >
+                                  📚 {t}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Exploration Questions */}
+                        {notebookData.summary?.explorationQuestions?.length > 0 && (
+                          <div>
+                            <h3 style={{ fontSize: 12, fontWeight: 600, color: '#9AA0A6', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>Suggested Questions</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {notebookData.summary.explorationQuestions.slice(0, 3).map((q, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setInitialPrompt(q);
+                                    setActiveTool('chat');
+                                    setRightOpen(true);
+                                  }}
+                                  style={{
+                                    textAlign: 'left', padding: '10px 14px', borderRadius: 10, fontSize: 13,
+                                    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                                    color: '#D1D1D1', cursor: 'pointer', transition: 'all 150ms',
+                                    display: 'flex', alignItems: 'center', gap: 10
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 15, color: '#A8C7FA' }}>help_outline</span>
+                                  <span style={{ flex: 1 }}>{q}</span>
+                                  <span className="material-symbols-outlined" style={{ fontSize: 14, opacity: 0.4 }}>arrow_forward</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chat Intro / Welcome Assistant card */}
+                      {notebookData.chatIntro && (
+                        <div style={{
+                          marginTop: 8, padding: 20, borderRadius: 16,
+                          background: 'linear-gradient(135deg, rgba(242,184,184,0.05) 0%, rgba(168,199,250,0.05) 100%)',
+                          border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', gap: 14
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span className="material-symbols-outlined" style={{ color: '#F2B8B8', fontSize: 20 }}>auto_awesome</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#E3E3E3' }}>Workspace Guide</span>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: '#D1D1D1' }}>
+                            {notebookData.chatIntro.message.replace(/\*\*/g, '')}
+                          </p>
+                          
+                          {notebookData.chatIntro.suggestedActions?.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                              {notebookData.chatIntro.suggestedActions.map((act, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setActiveTool(act.tool || 'chat');
+                                    setRightOpen(true);
+                                    if (act.tool === 'chat') {
+                                      setInitialPrompt(`I would like to start with: ${act.label}`);
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                                    background: '#004A77', color: '#C2E7FF', border: 'none', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: 6, transition: 'background 150ms'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#005C94'}
+                                  onMouseLeave={e => e.currentTarget.style.background = '#004A77'}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                                    {STUDIO_TOOLS.find(t => t.key === act.tool)?.icon || 'bolt'}
+                                  </span>
+                                  {act.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Fallback summary if notebookData fails */
+                    <div style={{
+                      fontSize: 15, lineHeight: 1.75, color: '#D1D1D1',
+                      padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)',
+                    }}>
+                      <p style={{ margin: 0 }}>
+                        This course covers <strong style={{ color: '#E3E3E3' }}>{video.subject || 'key concepts'}</strong> across{' '}
+                        <strong style={{ color: '#E3E3E3' }}>{segments.length} chapters</strong>.{' '}
+                        {segments.length > 0 && <>Topics include <strong style={{ color: '#E3E3E3' }}>{segments.slice(0, 3).map(s => s.title).join(', ')}</strong>{segments.length > 3 ? `, and ${segments.length - 3} more sections` : ''}.</>}
+                        {' '}Use the <strong style={{ color: '#A8C7FA' }}>Studio panel</strong> on the right to generate quizzes, flashcards, mind maps, or start an AI conversation about the content.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Spacer */}
-                <div style={{ flex: 1 }} />
+                {/* Smart contextual suggestions horizontal scroll above bottom input */}
+                {notebookData?.suggestions?.suggestions?.length > 0 && (
+                  <div style={{
+                    display: 'flex', gap: 8, overflowX: 'auto', padding: '4px 0 12px',
+                    marginTop: 20, scrollbarWidth: 'none', msOverflowStyle: 'none'
+                  }}>
+                    {notebookData.suggestions.suggestions.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          if (sug.tool && sug.tool !== 'chat') {
+                            setActiveTool(sug.tool);
+                            setRightOpen(true);
+                          } else {
+                            setInitialPrompt(sug.label);
+                            setActiveTool('chat');
+                            setRightOpen(true);
+                          }
+                        }}
+                        style={{
+                          flexShrink: 0, padding: '8px 14px', borderRadius: 20, fontSize: 12.5, fontWeight: 500,
+                          background: '#252329', border: '1px solid rgba(255,255,255,0.08)',
+                          color: '#E3E3E3', cursor: 'pointer', transition: 'all 150ms',
+                          display: 'flex', alignItems: 'center', gap: 6
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#252329'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#A8C7FA' }}>{sug.icon || 'bolt'}</span>
+                        {sug.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Chat input at bottom */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px',
                   background: '#252329', borderRadius: 28, border: '1px solid rgba(255,255,255,0.1)',
-                  marginTop: 32, position: 'sticky', bottom: 16,
+                  position: 'sticky', bottom: 16, zIndex: 10,
                 }}>
                   <input
-                    placeholder="Ask a question or create something"
+                    placeholder="Ask a question or explore this workspace..."
+                    value={chatInputValue}
+                    onChange={e => setChatInputValue(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && chatInputValue.trim()) {
+                        setInitialPrompt(chatInputValue.trim());
+                        setChatInputValue('');
+                        setActiveTool('chat');
+                        setRightOpen(true);
+                      }
+                    }}
                     style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit' }}
-                    onFocus={() => { setActiveTool('chat'); setRightOpen(true); }}
                   />
                   <span style={{ fontSize: 12, color: '#6B6B70', marginRight: 4 }}>{allSources.length} sources</span>
-                  <button style={{ ...S.iconBtn, background: '#004A77', color: '#C2E7FF', border: 'none' }}>
+                  <button
+                    onClick={() => {
+                      if (chatInputValue.trim()) {
+                        setInitialPrompt(chatInputValue.trim());
+                        setChatInputValue('');
+                        setActiveTool('chat');
+                        setRightOpen(true);
+                      }
+                    }}
+                    style={{ ...S.iconBtn, background: '#004A77', color: '#C2E7FF', border: 'none', cursor: 'pointer' }}
+                  >
                     <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_upward</span>
                   </button>
                 </div>
@@ -671,10 +1037,28 @@ export default function PlayerPage() {
                       <div style={{ flex: 1, overflow: 'auto' }}>
 
                         {activeTool === 'chat' && (
-                          <RaiseHandPanel video={video} segments={segments} currentTime={currentTime} onClose={() => setActiveTool(null)} onPause={handlePause} />
+                          <RaiseHandPanel
+                            video={video}
+                            segments={segments}
+                            currentTime={currentTime}
+                            onClose={() => setActiveTool(null)}
+                            onPause={handlePause}
+                            initialPrompt={initialPrompt}
+                            onPromptTriggered={() => setInitialPrompt('')}
+                            customWelcomeMessage={notebookData?.chatIntro?.message}
+                          />
                         )}
                         {activeTool === 'raisehand' && (
-                          <RaiseHandPanel video={video} segments={segments} currentTime={currentTime} onClose={() => setActiveTool(null)} onPause={handlePause} />
+                          <RaiseHandPanel
+                            video={video}
+                            segments={segments}
+                            currentTime={currentTime}
+                            onClose={() => setActiveTool(null)}
+                            onPause={handlePause}
+                            initialPrompt={initialPrompt}
+                            onPromptTriggered={() => setInitialPrompt('')}
+                            customWelcomeMessage={notebookData?.chatIntro?.message}
+                          />
                         )}
                         {activeTool === 'quiz' && (
                           <QuizPanel video={video} segments={segments} videoId={id} onXP={handleXP} />

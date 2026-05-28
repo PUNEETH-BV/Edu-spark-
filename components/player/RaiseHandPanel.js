@@ -11,7 +11,7 @@ const MODE_DEFAULTS = [
   { key: 'connect', label: '🔌 Connect', desc: 'Real-world application and context' },
 ];
 
-export default function RaiseHandPanel({ video, segments, currentTime, onClose, onPause }) {
+export default function RaiseHandPanel({ video, segments, currentTime, onClose, onPause, initialPrompt, onPromptTriggered, customWelcomeMessage }) {
   const [messages, setMessages]   = useState([]);
   const [inputText, setInputText] = useState('');
   const [mode, setMode]           = useState('expert');
@@ -29,22 +29,65 @@ export default function RaiseHandPanel({ video, segments, currentTime, onClose, 
   const expertRole    = video?.expert_role || 'Expert Tutor';
   const activeSegment = segments?.find(s => currentTime >= s.start && currentTime < s.end);
 
-  /* ── Welcome message — fires ONCE on mount only ─────────── */
+  /* ── Welcome message — fires on mount or when customWelcomeMessage changes ── */
   useEffect(() => {
     const t   = currentTimeRef.current;
     const seg = segmentsRef.current?.find(s => t >= s.start && t < s.end);
     const mins = Math.floor(t / 60);
     const secs = String(Math.floor(t % 60)).padStart(2, '0');
 
+    const welcomeContent = customWelcomeMessage || `Hello! I'm your AI Expert — a ${expertRole}. The video is paused at ${mins}:${secs}${seg ? ` during "${seg.title}"` : ''}. What would you like me to explain?`;
+
     setMessages([{
       role:      'assistant',
-      content:   `Hello! I'm your AI Expert — a ${expertRole}. The video is paused at ${mins}:${secs}${seg ? ` during "${seg.title}"` : ''}. What would you like me to explain?`,
+      content:   welcomeContent,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }]);
-    // ✅ DO NOT call onPause() here — the parent already paused when the user
-    //    clicked "Raise Hand". Calling it from this effect with [currentTime]
-    //    as a dep was the bug that paused the video every second.
-  }, []); // ← EMPTY array: only runs once when the panel mounts
+  }, [customWelcomeMessage]);
+
+  /* ── Auto-trigger initialPrompt if passed from parent ────────────────────── */
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim()) {
+      const runPrompt = async () => {
+        const userMsg = {
+          role:      'user',
+          content:   initialPrompt.trim(),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        // Append user message immediately
+        setMessages(prev => [...prev, userMsg]);
+        setLoading(true);
+
+        try {
+          const res = await fetch('/api/tutor-chat', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              messages:       [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+              videoTitle:     video?.title,
+              expertRole,
+              currentSegment: activeSegment,
+              mode,
+              content:        video?.content,
+            }),
+          });
+          const data = await res.json();
+          setMessages(prev => [...prev, {
+            role:      'assistant',
+            content:   data.answer || "I'm having trouble with that. Please try again.",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }]);
+        } catch (err) {
+          console.error('Tutor chat error:', err);
+        } finally {
+          setLoading(false);
+          if (onPromptTriggered) onPromptTriggered();
+        }
+      };
+      runPrompt();
+    }
+  }, [initialPrompt]);
 
   /* ── Auto-scroll to latest message ───────────────────────── */
   useEffect(() => {
