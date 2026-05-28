@@ -6,7 +6,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { detectPlatform, formatTime } from '@/lib/videoUtils';
+import { detectPlatform, formatTime, validateVideoUrl, getYouTubeThumbnail } from '@/lib/videoUtils';
 
 import YouTubePlayer   from '@/components/players/YouTubePlayer';
 import HTML5Player     from '@/components/players/HTML5Player';
@@ -78,6 +78,10 @@ export default function PlayerPage() {
   const [sourceMode, setSourceMode] = useState('web'); // 'web' | 'fast'
   const [selectedSources, setSelectedSources] = useState(new Set());
   const [allSources, setAllSources] = useState([]); // loaded from db_videos
+  const [showAddSources, setShowAddSources] = useState(false);
+  const [addingSource, setAddingSource] = useState(false);
+  const [addSourceError, setAddSourceError] = useState('');
+  const [addSourceUrl, setAddSourceUrl] = useState('');
 
   // ── Command palette ────────────────────────────────────────────────────────
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -194,6 +198,56 @@ export default function PlayerPage() {
     else setSelectedSources(new Set(allSources.map(v => v.id)));
   }
 
+  // ── Add source from URL ───────────────────────────────────────────────────
+  async function addSourceFromUrl(url) {
+    if (!url || !url.trim()) return;
+    setAddSourceError('');
+    const validation = validateVideoUrl(url.trim());
+    if (!validation.valid) { setAddSourceError(validation.message || 'Invalid URL'); return; }
+    setAddingSource(true);
+    const title = url.trim();
+    const newVid = {
+      user_id: user.id, url: validation.url, platform: validation.platform,
+      title, subject: video?.subject || 'General',
+      thumbnail: validation.platform === 'youtube' ? getYouTubeThumbnail(validation.videoId) : null,
+      duration: 0, progress: 0,
+    };
+    const { data } = await supabase.from('videos').insert(newVid).select().single();
+    if (data) {
+      setAllSources(prev => [data, ...prev]);
+      setSelectedSources(prev => new Set([...prev, data.id]));
+      // Try to analyze for segments
+      try {
+        const res = await fetch('/api/analyze-video', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: validation.url, title, subject: video?.subject || 'General' }),
+        });
+        if (res.ok) {
+          const { segments: segs } = await res.json();
+          if (segs?.length > 0) {
+            const segRecords = segs.map((s, i) => ({
+              video_id: data.id, start_time: s.start || s.start_time || 0,
+              end_time: s.end || s.end_time || 0, title: s.title || `Chapter ${i + 1}`, topics: s.topics || [],
+            }));
+            await supabase.from('segments').insert(segRecords);
+          }
+        }
+      } catch (err) { console.log('Segment analysis skipped:', err.message); }
+    }
+    setAddingSource(false);
+    setAddSourceUrl('');
+    setSourceSearch('');
+    setShowAddSources(false);
+  }
+
+  // ── Delete source ─────────────────────────────────────────────────────────
+  async function deleteSource(srcId) {
+    if (srcId === id) return; // can't delete current
+    await supabase.from('videos').delete().eq('id', srcId);
+    setAllSources(prev => prev.filter(s => s.id !== srcId));
+    setSelectedSources(prev => { const n = new Set(prev); n.delete(srcId); return n; });
+  }
+
   // ── Loading states ─────────────────────────────────────────────────────────
   if (authLoading || !user) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1C1B1F' }}><div className="spinner" style={{ width: 40, height: 40 }} /></div>;
@@ -301,33 +355,34 @@ export default function PlayerPage() {
                 </button>
               </div>
 
-              {/* + Add sources */}
-              <button style={{
+              {/* + Add sources — opens modal */}
+              <button onClick={() => setShowAddSources(true)} style={{
                 width: '100%', padding: '10px 14px', borderRadius: 12,
                 background: 'transparent', border: '1px solid rgba(255,255,255,0.15)',
                 color: '#E3E3E3', fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
+                transition: 'all 150ms',
+              }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
+                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                 Add sources
               </button>
 
-              {/* Search the web (Resource Ranker) */}
-              <div style={{ marginTop: 14 }}>
+              {/* Inline search — directly add URL as source */}
+              <form onSubmit={e => { e.preventDefault(); addSourceFromUrl(sourceSearch); }} style={{ marginTop: 14 }}>
                 <input
                   value={sourceSearch}
                   onChange={e => setSourceSearch(e.target.value)}
-                  placeholder="Search the web for new sources"
+                  placeholder="Paste URL to add source"
                   style={{
                     width: '100%', padding: '10px 12px', borderRadius: 10,
                     background: '#252329', border: '1px solid rgba(255,255,255,0.08)',
                     color: '#E3E3E3', fontSize: 13, fontFamily: 'inherit', outline: 'none',
                   }}
                 />
-                {/* Web / Fast Research toggles */}
                 <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
                   {[{ key: 'web', icon: 'language', label: 'Web' }, { key: 'fast', icon: 'bolt', label: 'Fast Research' }].map(m => (
-                    <button key={m.key} onClick={() => setSourceMode(m.key)} style={{
+                    <button key={m.key} type="button" onClick={() => setSourceMode(m.key)} style={{
                       padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
                       background: sourceMode === m.key ? 'rgba(255,255,255,0.1)' : 'transparent',
                       color: sourceMode === m.key ? '#E3E3E3' : '#9AA0A6',
@@ -338,26 +393,29 @@ export default function PlayerPage() {
                       {m.label}
                     </button>
                   ))}
-                  <button style={{ ...S.iconBtn, width: 28, height: 28, marginLeft: 'auto' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>search</span>
+                  <button type="submit" disabled={addingSource || !sourceSearch.trim()} style={{
+                    ...S.iconBtn, width: 28, height: 28, marginLeft: 'auto',
+                    opacity: sourceSearch.trim() ? 1 : 0.4,
+                    cursor: sourceSearch.trim() ? 'pointer' : 'default',
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{addingSource ? 'hourglass_empty' : 'search'}</span>
                   </button>
                 </div>
-              </div>
+                {addSourceError && <p style={{ fontSize: 11, color: '#F2B8B8', margin: '6px 0 0' }}>{addSourceError}</p>}
+              </form>
 
               {/* Select all */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <button style={{ background: 'none', border: 'none', color: '#9AA0A6', fontSize: 14, cursor: 'pointer', padding: 0 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>history</span>
-                </button>
+                <span style={{ fontSize: 11, color: '#6B6B70' }}>{allSources.length} source{allSources.length !== 1 ? 's' : ''}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, color: '#9AA0A6' }}>Select all</span>
                   <button onClick={toggleAllSources} style={{
                     width: 20, height: 20, borderRadius: 4,
-                    background: selectedSources.size === allSources.length ? '#A8C7FA' : 'transparent',
-                    border: selectedSources.size === allSources.length ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
+                    background: selectedSources.size === allSources.length && allSources.length > 0 ? '#A8C7FA' : 'transparent',
+                    border: selectedSources.size === allSources.length && allSources.length > 0 ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {selectedSources.size === allSources.length && (
+                    {selectedSources.size === allSources.length && allSources.length > 0 && (
                       <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#1C1B1F', fontWeight: 700 }}>check</span>
                     )}
                   </button>
@@ -367,19 +425,38 @@ export default function PlayerPage() {
               {/* Source list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8 }}>
                 {allSources.map(src => (
-                  <button key={src.id} onClick={() => { if (src.id !== id) router.push(`/player/${src.id}`); }} style={{
-                    padding: '10px 8px', borderRadius: 8, border: 'none',
+                  <div key={src.id} style={{
+                    padding: '10px 8px', borderRadius: 8,
                     background: src.id === id ? 'rgba(168,199,250,0.06)' : 'transparent',
-                    color: '#E3E3E3', fontSize: 13, textAlign: 'left', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 10, transition: 'background 150ms',
+                    position: 'relative',
                   }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: src.platform === 'youtube' ? '#FF0000' : '#A8C7FA' }}>
-                      {src.platform === 'youtube' ? 'smart_display' : 'description'}
-                    </span>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {src.title}
-                    </span>
-                    <div onClick={e => { e.stopPropagation(); toggleSource(src.id); }} style={{
+                    <button onClick={() => { if (src.id !== id) router.push(`/player/${src.id}`); }} style={{
+                      flex: 1, background: 'none', border: 'none', color: '#E3E3E3', fontSize: 13,
+                      textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                      padding: 0, minWidth: 0,
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: src.platform === 'youtube' ? '#FF0000' : '#A8C7FA', flexShrink: 0 }}>
+                        {src.platform === 'youtube' ? 'smart_display' : 'description'}
+                      </span>
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {src.title}
+                      </span>
+                    </button>
+                    {/* Delete button (not for current) */}
+                    {src.id !== id && (
+                      <button onClick={() => deleteSource(src.id)} title="Remove" style={{
+                        width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                        background: 'transparent', border: 'none', color: '#6B6B70',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'color 150ms',
+                      }} onMouseEnter={e => e.currentTarget.style.color = '#F2B8B8'}
+                         onMouseLeave={e => e.currentTarget.style.color = '#6B6B70'}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+                      </button>
+                    )}
+                    {/* Checkbox */}
+                    <div onClick={() => toggleSource(src.id)} style={{
                       width: 20, height: 20, borderRadius: 4, flexShrink: 0,
                       background: selectedSources.has(src.id) ? '#A8C7FA' : 'transparent',
                       border: selectedSources.has(src.id) ? 'none' : '1.5px solid rgba(255,255,255,0.2)',
@@ -389,8 +466,13 @@ export default function PlayerPage() {
                         <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#1C1B1F', fontWeight: 700 }}>check</span>
                       )}
                     </div>
-                  </button>
+                  </div>
                 ))}
+                {allSources.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '20px 0', color: '#6B6B70', fontSize: 12 }}>
+                    No sources yet. Add one above.
+                  </div>
+                )}
               </div>
             </div>
           </aside>
@@ -625,6 +707,135 @@ export default function PlayerPage() {
             </>
           )}
         </div>
+
+        {/* ── ADD SOURCES MODAL ─────────────────────────────────────────── */}
+        {showAddSources && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }} onClick={() => setShowAddSources(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', maxWidth: 580, background: '#1C1B1F',
+              borderRadius: 24, border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.5)', padding: '36px 32px',
+              animation: 'cmdIn 150ms ease-out', position: 'relative',
+            }}>
+              {/* Close */}
+              <button onClick={() => setShowAddSources(false)} style={{
+                position: 'absolute', top: 16, right: 16,
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)', border: 'none',
+                color: '#9AA0A6', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+              </button>
+
+              {/* Title */}
+              <h2 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', textAlign: 'center', lineHeight: 1.4 }}>
+                Add sources to your notebook
+              </h2>
+              <p style={{ textAlign: 'center', margin: '0 0 24px', fontSize: 16, color: '#9AA0A6' }}>
+                Paste a URL, upload files, or search the web
+              </p>
+
+              {/* Search bar */}
+              <div style={{
+                borderRadius: 14, border: '1px solid rgba(100,150,255,0.3)',
+                padding: '14px 16px', marginBottom: 20,
+              }}>
+                <form onSubmit={e => { e.preventDefault(); addSourceFromUrl(addSourceUrl); }}>
+                  <input
+                    value={addSourceUrl}
+                    onChange={e => setAddSourceUrl(e.target.value)}
+                    placeholder="Paste YouTube URL or website link"
+                    autoFocus
+                    style={{
+                      width: '100%', background: 'transparent', border: 'none', outline: 'none',
+                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', marginBottom: 12,
+                    }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {[
+                      { key: 'web', icon: 'language', label: 'Web' },
+                      { key: 'fast', icon: 'bolt', label: 'Fast Research' },
+                    ].map(m => (
+                      <button key={m.key} type="button" onClick={() => setSourceMode(m.key)} style={{
+                        padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                        background: sourceMode === m.key ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                        color: '#E3E3E3', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{m.icon}</span>
+                        {m.label}
+                        <span className="material-symbols-outlined" style={{ fontSize: 12, opacity: 0.5 }}>expand_more</span>
+                      </button>
+                    ))}
+                    <button type="submit" disabled={addingSource || !addSourceUrl.trim()} style={{
+                      width: 32, height: 32, borderRadius: '50%', marginLeft: 'auto',
+                      background: addSourceUrl.trim() ? '#004A77' : 'rgba(255,255,255,0.08)',
+                      border: 'none', color: addSourceUrl.trim() ? '#C2E7FF' : '#9AA0A6',
+                      cursor: addSourceUrl.trim() ? 'pointer' : 'default',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{addingSource ? 'hourglass_empty' : 'search'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {addSourceError && <p style={{ color: '#F2B8B8', fontSize: 13, margin: '0 0 12px', textAlign: 'center' }}>{addSourceError}</p>}
+
+              {/* Drop zone */}
+              <div style={{
+                borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
+                padding: '40px 20px', textAlign: 'center',
+              }}>
+                <p style={{ fontSize: 16, fontWeight: 500, color: '#E3E3E3', margin: '0 0 8px' }}>
+                  or drop your files
+                </p>
+                <p style={{ fontSize: 13, color: '#9AA0A6', margin: 0 }}>
+                  pdf, images, docs, audio, <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>and more</span>
+                </p>
+              </div>
+
+              {/* Source type buttons */}
+              <div style={{
+                display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20, flexWrap: 'wrap',
+              }}>
+                {[
+                  { icon: 'upload_file', label: 'Upload files' },
+                  { icon: 'link', label: 'Websites', extra: '🔴' },
+                  { icon: 'cloud', label: 'Drive' },
+                  { icon: 'content_paste', label: 'Copied text' },
+                ].map(btn => (
+                  <button key={btn.label} onClick={() => {
+                    if (btn.label === 'Websites') {
+                      const inp = document.querySelector('[placeholder="Paste YouTube URL or website link"]');
+                      if (inp) inp.focus();
+                    }
+                  }} style={{
+                    padding: '8px 18px', borderRadius: 20,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#E3E3E3', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 150ms',
+                  }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{btn.icon}</span>
+                    {btn.extra && <span style={{ fontSize: 10 }}>{btn.extra}</span>}
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Source count */}
+              <div style={{ marginTop: 16, textAlign: 'right', fontSize: 12, color: '#6B6B70' }}>
+                {allSources.length} / 300
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── COMMAND PALETTE ──────────────────────────────────────────── */}
         {cmdOpen && (
