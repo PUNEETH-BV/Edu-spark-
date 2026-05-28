@@ -787,46 +787,74 @@ export default function PlayerPage() {
 
               {addSourceError && <p style={{ color: '#F2B8B8', fontSize: 13, margin: '0 0 12px', textAlign: 'center' }}>{addSourceError}</p>}
 
-              {/* Drop zone */}
-              <div style={{
-                borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
-                padding: '40px 20px', textAlign: 'center',
-              }}>
+              {/* Functional drop zone */}
+              <div
+                onClick={() => document.getElementById('player-file-upload')?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgba(168,199,250,0.5)'; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                  const file = e.dataTransfer.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                      setAddingSource(true);
+                      const content = ev.target.result;
+                      const title = file.name.replace(/\.[^.]+$/, '');
+                      const { data } = await supabase.from('videos').insert({
+                        user_id: user.id, url: `file://${file.name}`, platform: 'document',
+                        title, subject: video?.subject || 'General', thumbnail: null,
+                        duration: 0, progress: 0, content: content.substring(0, 50000),
+                      }).select().single();
+                      if (data) {
+                        setAllSources(prev => [data, ...prev]);
+                        setSelectedSources(prev => new Set([...prev, data.id]));
+                      }
+                      setAddingSource(false);
+                      setShowAddSources(false);
+                    };
+                    reader.readAsText(file);
+                  }
+                }}
+                style={{
+                  borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
+                  padding: '40px 20px', textAlign: 'center', cursor: 'pointer',
+                  transition: 'border-color 200ms',
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 36, color: '#A8C7FA', display: 'block', marginBottom: 8 }}>cloud_upload</span>
                 <p style={{ fontSize: 16, fontWeight: 500, color: '#E3E3E3', margin: '0 0 8px' }}>
-                  or drop your files
+                  Click or drop files here
                 </p>
                 <p style={{ fontSize: 13, color: '#9AA0A6', margin: 0 }}>
-                  pdf, images, docs, audio, <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>and more</span>
+                  PDF, TXT, DOCX, MD
                 </p>
-              </div>
-
-              {/* Source type buttons */}
-              <div style={{
-                display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20, flexWrap: 'wrap',
-              }}>
-                {[
-                  { icon: 'upload_file', label: 'Upload files' },
-                  { icon: 'link', label: 'Websites', extra: '🔴' },
-                  { icon: 'cloud', label: 'Drive' },
-                  { icon: 'content_paste', label: 'Copied text' },
-                ].map(btn => (
-                  <button key={btn.label} onClick={() => {
-                    if (btn.label === 'Websites') {
-                      const inp = document.querySelector('[placeholder="Paste YouTube URL or website link"]');
-                      if (inp) inp.focus();
-                    }
-                  }} style={{
-                    padding: '8px 18px', borderRadius: 20,
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#E3E3E3', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'all 150ms',
-                  }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
-                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{btn.icon}</span>
-                    {btn.extra && <span style={{ fontSize: 10 }}>{btn.extra}</span>}
-                    {btn.label}
-                  </button>
-                ))}
+                <input id="player-file-upload" type="file" accept=".pdf,.txt,.docx,.md"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (ev) => {
+                      setAddingSource(true);
+                      const content = ev.target.result;
+                      const title = file.name.replace(/\.[^.]+$/, '');
+                      const { data } = await supabase.from('videos').insert({
+                        user_id: user.id, url: `file://${file.name}`, platform: 'document',
+                        title, subject: video?.subject || 'General', thumbnail: null,
+                        duration: 0, progress: 0, content: content.substring(0, 50000),
+                      }).select().single();
+                      if (data) {
+                        setAllSources(prev => [data, ...prev]);
+                        setSelectedSources(prev => new Set([...prev, data.id]));
+                      }
+                      setAddingSource(false);
+                      setShowAddSources(false);
+                    };
+                    reader.readAsText(file);
+                  }}
+                />
               </div>
 
               {/* Source count */}

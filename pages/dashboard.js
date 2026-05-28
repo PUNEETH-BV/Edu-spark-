@@ -44,6 +44,10 @@ export default function Dashboard() {
   const [newSubject, setNewSubject] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [createTab, setCreateTab] = useState('website'); // 'website' | 'upload' | 'text'
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedContent, setUploadedContent] = useState('');
+  const [pasteText, setPasteText] = useState('');
 
   // Auth guard
   useEffect(() => {
@@ -127,6 +131,84 @@ export default function Dashboard() {
   async function handleDelete(courseId) {
     await supabase.from('videos').delete().eq('id', courseId);
     setCourses(prev => prev.filter(c => c.id !== courseId));
+  }
+
+  // Handle file upload (read text content)
+  function handleFileUpload(file) {
+    if (file.size > 10 * 1024 * 1024) { setError('File too large (max 10MB)'); return; }
+    setUploadedFile(file);
+    setError('');
+    if (!newTitle) setNewTitle(file.name.replace(/\.[^.]+$/, ''));
+    const reader = new FileReader();
+    reader.onload = (e) => setUploadedContent(e.target.result);
+    reader.readAsText(file);
+  }
+
+  // Create course from uploaded file
+  async function handleFileCreate() {
+    if (!uploadedFile || !uploadedContent) { setError('Please upload a file first'); return; }
+    setError(''); setCreating(true);
+    const title = newTitle.trim() || uploadedFile.name.replace(/\.[^.]+$/, '');
+    const newVid = {
+      user_id: user.id, url: `file://${uploadedFile.name}`, platform: 'document',
+      title, subject: newSubject.trim() || 'General', thumbnail: null,
+      duration: 0, progress: 0, content: uploadedContent.substring(0, 50000),
+    };
+    const { data } = await supabase.from('videos').insert(newVid).select().single();
+    if (data) {
+      try {
+        const res = await fetch('/api/analyze-video', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: newVid.url, title, subject: newVid.subject, content: uploadedContent.substring(0, 10000) }),
+        });
+        if (res.ok) {
+          const { segments } = await res.json();
+          if (segments?.length > 0) {
+            await supabase.from('segments').insert(segments.map((s, i) => ({
+              video_id: data.id, start_time: s.start || 0, end_time: s.end || 0,
+              title: s.title || `Chapter ${i + 1}`, topics: s.topics || [],
+            })));
+          }
+        }
+      } catch (err) { console.log('Segment analysis skipped:', err.message); }
+    }
+    setCreating(false); setShowCreate(false); setUploadedFile(null); setUploadedContent('');
+    setNewTitle(''); setNewSubject('');
+    if (data?.id) router.push(`/player/${data.id}`);
+  }
+
+  // Create course from pasted text
+  async function handleTextCreate() {
+    if (!pasteText.trim()) { setError('Please paste some content'); return; }
+    if (!newTitle.trim()) { setError('Please enter a course title'); return; }
+    setError(''); setCreating(true);
+    const title = newTitle.trim();
+    const newVid = {
+      user_id: user.id, url: `text://pasted-${Date.now()}`, platform: 'document',
+      title, subject: newSubject.trim() || 'General', thumbnail: null,
+      duration: 0, progress: 0, content: pasteText.substring(0, 50000),
+    };
+    const { data } = await supabase.from('videos').insert(newVid).select().single();
+    if (data) {
+      try {
+        const res = await fetch('/api/analyze-video', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: newVid.url, title, subject: newVid.subject, content: pasteText.substring(0, 10000) }),
+        });
+        if (res.ok) {
+          const { segments } = await res.json();
+          if (segments?.length > 0) {
+            await supabase.from('segments').insert(segments.map((s, i) => ({
+              video_id: data.id, start_time: s.start || 0, end_time: s.end || 0,
+              title: s.title || `Chapter ${i + 1}`, topics: s.topics || [],
+            })));
+          }
+        }
+      } catch (err) { console.log('Segment analysis skipped:', err.message); }
+    }
+    setCreating(false); setShowCreate(false); setPasteText('');
+    setNewTitle(''); setNewSubject('');
+    if (data?.id) router.push(`/player/${data.id}`);
   }
 
   // Filter courses
@@ -340,7 +422,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── CREATE COURSE MODAL (NotebookLM-style) ─────────────── */}
+        {/* ── CREATE COURSE MODAL (Fully Functional) ─────────────── */}
         {showCreate && (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 9999,
@@ -348,12 +430,13 @@ export default function Dashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }} onClick={() => setShowCreate(false)}>
             <div onClick={e => e.stopPropagation()} style={{
-              width: '100%', maxWidth: 580, background: '#1C1B1F',
+              width: '100%', maxWidth: 600, background: '#1C1B1F',
               borderRadius: 24, border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 24px 64px rgba(0,0,0,0.5)', padding: '36px 32px',
               animation: 'modalIn 200ms ease-out', position: 'relative',
+              maxHeight: '90vh', overflow: 'auto',
             }}>
-              {/* Close button */}
+              {/* Close */}
               <button onClick={() => setShowCreate(false)} style={{
                 position: 'absolute', top: 16, right: 16,
                 width: 32, height: 32, borderRadius: '50%',
@@ -366,106 +449,247 @@ export default function Dashboard() {
 
               {/* Title */}
               <h2 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', textAlign: 'center', lineHeight: 1.4 }}>
-                Create Audio and Video Overviews from
+                Add sources to create a course
               </h2>
-              <p style={{ textAlign: 'center', margin: '0 0 24px', fontSize: 18, fontWeight: 600 }}>
-                <span style={{ background: 'linear-gradient(90deg, #81C995, #A8C7FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>your documents</span>
+              <p style={{ textAlign: 'center', margin: '0 0 20px', fontSize: 14, color: '#9AA0A6' }}>
+                Add YouTube videos, websites, PDFs, or paste text
               </p>
 
-              {/* Search bar (Resource Ranker) */}
-              <div style={{
-                borderRadius: 14, border: '1px solid rgba(100,150,255,0.3)',
-                padding: '14px 16px', marginBottom: 20,
-              }}>
-                <form onSubmit={handleCreate}>
-                  <input
-                    value={newUrl}
-                    onChange={e => setNewUrl(e.target.value)}
-                    placeholder="Search the web for new sources"
-                    style={{
-                      width: '100%', background: 'transparent', border: 'none', outline: 'none',
-                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', marginBottom: 12,
-                    }}
-                  />
-                  {/* Web / Fast Research toggles */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {[
-                      { key: 'web', icon: 'language', label: 'Web' },
-                      { key: 'fast', icon: 'bolt', label: 'Fast Research' },
-                    ].map(m => (
-                      <button key={m.key} type="button" style={{
-                        padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-                        background: 'rgba(255,255,255,0.08)', color: '#E3E3E3',
-                        border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                      }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{m.icon}</span>
-                        {m.label}
-                        <span className="material-symbols-outlined" style={{ fontSize: 12, opacity: 0.5 }}>expand_more</span>
-                      </button>
-                    ))}
-                    <button type="submit" disabled={creating} style={{
-                      width: 32, height: 32, borderRadius: '50%', marginLeft: 'auto',
-                      background: 'rgba(255,255,255,0.08)', border: 'none',
-                      color: '#9AA0A6', cursor: creating ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{creating ? 'hourglass_empty' : 'search'}</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
-
-              {/* Drop zone */}
-              <div style={{
-                borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
-                padding: '40px 20px', textAlign: 'center',
-                transition: 'border-color 200ms',
-              }}>
-                <p style={{ fontSize: 16, fontWeight: 500, color: '#E3E3E3', margin: '0 0 8px' }}>
-                  or drop your files
-                </p>
-                <p style={{ fontSize: 13, color: '#9AA0A6', margin: 0 }}>
-                  pdf, images, docs, audio, <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>and more</span>
-                </p>
-              </div>
-
-              {/* Source type buttons */}
-              <div style={{
-                display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20, flexWrap: 'wrap',
-              }}>
+              {/* Source type tabs */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {[
-                  { icon: 'upload_file', label: 'Upload files' },
-                  { icon: 'link', label: 'Websites', extra: '🔴' },
-                  { icon: 'cloud', label: 'Drive' },
-                  { icon: 'content_paste', label: 'Copied text' },
-                ].map(btn => (
-                  <button key={btn.label} onClick={() => {
-                    if (btn.label === 'Websites') {
-                      // Focus the URL input
-                      const inp = document.querySelector('[placeholder="Search the web for new sources"]');
-                      if (inp) inp.focus();
-                    }
-                  }} style={{
-                    padding: '8px 18px', borderRadius: 20,
-                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#E3E3E3', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                  { key: 'website', icon: 'link', label: 'Websites / YouTube' },
+                  { key: 'upload', icon: 'upload_file', label: 'Upload PDF' },
+                  { key: 'text', icon: 'content_paste', label: 'Paste Text' },
+                ].map(t => (
+                  <button key={t.key} onClick={() => setCreateTab(t.key)} style={{
+                    padding: '8px 18px', borderRadius: 20, fontSize: 13, fontWeight: 500,
+                    background: createTab === t.key ? 'rgba(168,199,250,0.15)' : 'rgba(255,255,255,0.06)',
+                    color: createTab === t.key ? '#A8C7FA' : '#9AA0A6',
+                    border: createTab === t.key ? '1px solid rgba(168,199,250,0.3)' : '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
                     transition: 'all 150ms',
-                  }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
-                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{btn.icon}</span>
-                    {btn.extra && <span style={{ fontSize: 10 }}>{btn.extra}</span>}
-                    {btn.label}
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{t.icon}</span>
+                    {t.label}
                   </button>
                 ))}
               </div>
 
-              {/* Hidden: title and subject for now (auto-inferred) */}
-              <input type="hidden" value={newTitle} />
-              <input type="hidden" value={newSubject} />
+              {/* ── TAB: Website / YouTube URL ─────────────────────────── */}
+              {createTab === 'website' && (
+                <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>
+                      YouTube or Website URL *
+                    </label>
+                    <input
+                      value={newUrl}
+                      onChange={e => setNewUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=... or any website URL"
+                      autoFocus
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>
+                      Course Title
+                    </label>
+                    <input
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      placeholder="e.g. Introduction to Machine Learning"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>
+                      Subject
+                    </label>
+                    <input
+                      value={newSubject}
+                      onChange={e => setNewSubject(e.target.value)}
+                      placeholder="e.g. Machine Learning, Biology, Web Dev"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: 0 }}>{error}</p>}
+                  <button type="submit" disabled={creating || !newUrl.trim()} style={{
+                    padding: '12px', borderRadius: 12,
+                    background: newUrl.trim() ? '#004A77' : 'rgba(255,255,255,0.06)',
+                    border: 'none', color: newUrl.trim() ? '#C2E7FF' : '#6B6B70',
+                    fontSize: 14, fontWeight: 600,
+                    cursor: creating || !newUrl.trim() ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    transition: 'all 150ms',
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{creating ? 'hourglass_empty' : 'add_circle'}</span>
+                    {creating ? 'Creating course...' : 'Create Course'}
+                  </button>
+                </form>
+              )}
+
+              {/* ── TAB: Upload PDF ────────────────────────────────────── */}
+              {createTab === 'upload' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {/* Drop zone with file input */}
+                  <div
+                    onClick={() => document.getElementById('pdf-upload-input')?.click()}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = 'rgba(168,199,250,0.5)'; }}
+                    onDragLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                      const file = e.dataTransfer.files[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                    style={{
+                      borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
+                      padding: '48px 20px', textAlign: 'center', cursor: 'pointer',
+                      transition: 'border-color 200ms',
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#A8C7FA', display: 'block', marginBottom: 12 }}>cloud_upload</span>
+                    <p style={{ fontSize: 16, fontWeight: 500, color: '#E3E3E3', margin: '0 0 8px' }}>
+                      {uploadedFile ? `✓ ${uploadedFile.name}` : 'Click or drag to upload PDF'}
+                    </p>
+                    <p style={{ fontSize: 13, color: '#9AA0A6', margin: 0 }}>
+                      PDF, DOCX, TXT (max 10MB)
+                    </p>
+                    <input
+                      id="pdf-upload-input"
+                      type="file"
+                      accept=".pdf,.docx,.txt,.md"
+                      style={{ display: 'none' }}
+                      onChange={e => {
+                        if (e.target.files[0]) handleFileUpload(e.target.files[0]);
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Course Title</label>
+                    <input
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      placeholder={uploadedFile ? uploadedFile.name.replace(/\.[^.]+$/, '') : 'e.g. Biology Notes'}
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Subject</label>
+                    <input
+                      value={newSubject}
+                      onChange={e => setNewSubject(e.target.value)}
+                      placeholder="e.g. Biology, Math, CS"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: 0 }}>{error}</p>}
+                  <button
+                    disabled={creating || !uploadedFile}
+                    onClick={() => handleFileCreate()}
+                    style={{
+                      padding: '12px', borderRadius: 12,
+                      background: uploadedFile ? '#004A77' : 'rgba(255,255,255,0.06)',
+                      border: 'none', color: uploadedFile ? '#C2E7FF' : '#6B6B70',
+                      fontSize: 14, fontWeight: 600,
+                      cursor: creating || !uploadedFile ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{creating ? 'hourglass_empty' : 'add_circle'}</span>
+                    {creating ? 'Creating...' : 'Create from File'}
+                  </button>
+                </div>
+              )}
+
+              {/* ── TAB: Paste Text ────────────────────────────────────── */}
+              {createTab === 'text' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>
+                      Paste your content *
+                    </label>
+                    <textarea
+                      value={pasteText}
+                      onChange={e => setPasteText(e.target.value)}
+                      placeholder="Paste your notes, article, or any text content here..."
+                      rows={8}
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                        resize: 'vertical', minHeight: 120,
+                      }}
+                    />
+                    <p style={{ fontSize: 11, color: '#6B6B70', margin: '4px 0 0' }}>
+                      {pasteText.length} characters
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Course Title *</label>
+                    <input
+                      value={newTitle}
+                      onChange={e => setNewTitle(e.target.value)}
+                      placeholder="e.g. My Biology Notes"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Subject</label>
+                    <input
+                      value={newSubject}
+                      onChange={e => setNewSubject(e.target.value)}
+                      placeholder="e.g. Biology, Physics"
+                      style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 12,
+                        background: '#252329', border: '1px solid rgba(255,255,255,0.1)',
+                        color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      }}
+                    />
+                  </div>
+                  {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: 0 }}>{error}</p>}
+                  <button
+                    disabled={creating || !pasteText.trim() || !newTitle.trim()}
+                    onClick={() => handleTextCreate()}
+                    style={{
+                      padding: '12px', borderRadius: 12,
+                      background: pasteText.trim() && newTitle.trim() ? '#004A77' : 'rgba(255,255,255,0.06)',
+                      border: 'none', color: pasteText.trim() && newTitle.trim() ? '#C2E7FF' : '#6B6B70',
+                      fontSize: 14, fontWeight: 600,
+                      cursor: creating || !pasteText.trim() || !newTitle.trim() ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{creating ? 'hourglass_empty' : 'add_circle'}</span>
+                    {creating ? 'Creating...' : 'Create from Text'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
