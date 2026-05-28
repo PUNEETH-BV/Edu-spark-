@@ -1,3 +1,5 @@
+// player/[id].js — NotebookLM-style 3-panel immersive workspace
+// LEFT: Sources (chapters, bookmarks) | CENTER: Content (video/PDF) | RIGHT: AI Studio (tools)
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -9,543 +11,605 @@ import { detectPlatform, formatTime } from '@/lib/videoUtils';
 import YouTubePlayer   from '@/components/players/YouTubePlayer';
 import HTML5Player     from '@/components/players/HTML5Player';
 import SegmentTimeline from '@/components/player/SegmentTimeline';
-import RaiseHandPanel  from '@/components/player/RaiseHandPanel';
-import BookmarksPanel  from '@/components/player/BookmarksPanel';
 import QuizPanel       from '@/components/player/QuizPanel';
 import FlashcardDeck   from '@/components/player/FlashcardDeck';
 import NotesPanel      from '@/components/player/NotesPanel';
 import MindMapPanel    from '@/components/player/MindMapPanel';
 import PodcastPanel    from '@/components/player/PodcastPanel';
 import DocumentReader  from '@/components/player/DocumentReader';
+import RaiseHandPanel  from '@/components/player/RaiseHandPanel';
+import BookmarksPanel  from '@/components/player/BookmarksPanel';
 
 // ── Studio tool definitions ──────────────────────────────────────────────────
 const STUDIO_TOOLS = [
-  { key: 'podcast',    icon: '🎧', label: 'Audio Overview',  color: '#2d4a3e' },
-  { key: 'slides',     icon: '📊', label: 'Slide Deck',      color: '#3a3020' },
-  { key: 'video',      icon: '🎬', label: 'Video Lecture',   color: '#2a2a3e' },
-  { key: 'mindmap',    icon: '🗺️', label: 'Mind Map',        color: '#3a2020' },
-  { key: 'quiz',       icon: '🎯', label: 'Quiz',            color: '#1e3040' },
-  { key: 'flashcards', icon: '🃏', label: 'Flashcards',      color: '#2e2040' },
-  { key: 'notes',      icon: '📝', label: 'Notes',           color: '#1e2e20' },
-  { key: 'smartboard', icon: '🖊️', label: 'Smart Board',    color: '#3a2030' },
+  { key: 'chat',       icon: 'chat',           label: 'AI Chat',        color: '#A8C7FA' },
+  { key: 'podcast',    icon: 'headphones',      label: 'Audio Overview', color: '#F2B8B8' },
+  { key: 'quiz',       icon: 'quiz',            label: 'Quiz',           color: '#81C995' },
+  { key: 'flashcards', icon: 'style',           label: 'Flashcards',     color: '#FDD663' },
+  { key: 'mindmap',    icon: 'account_tree',    label: 'Mind Map',       color: '#A8C7FA' },
+  { key: 'notes',      icon: 'edit_note',       label: 'Notes',          color: '#81C995' },
 ];
 
+// ── Keyboard shortcut map ────────────────────────────────────────────────────
+const SHORTCUT_MAP = {
+  'c': 'chat', 'q': 'quiz', 'f': 'flashcards',
+  'm': 'mindmap', 'n': 'notes', 'p': 'podcast',
+};
+
+// ── Persist panel state to localStorage ──────────────────────────────────────
+function loadPanelState() {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem('eduspark_panel_state') || '{}');
+  } catch { return {}; }
+}
+
+function savePanelState(state) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('eduspark_panel_state', JSON.stringify(state));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function PlayerPage() {
-  const router   = useRouter();
-  const { id }   = router.query;
-  const { user, loading: authLoading, updateXP, awardBadge, signOut } = useAuth();
+  const router = useRouter();
+  const { id } = router.query;
+  const { user, loading: authLoading } = useAuth();
 
-  const [video,       setVideo]      = useState(null);
-  const [segments,    setSegments]   = useState([]);
-  const [analyzing,   setAnalyzing]  = useState(false);
-  const [loadingVid,  setLoadingVid] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
+  // ── Data state ─────────────────────────────────────────────────────────────
+  const [video, setVideo]       = useState(null);
+  const [segments, setSegments] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  // ── Panel state ────────────────────────────────────────────────────────────
-  // centerMode: 'chat' | tool key (podcast, slides, quiz, flashcards, mindmap, notes, smartboard, video)
-  const [centerMode,      setCenterMode]      = useState('chat');
-  const [sourcesOpen,     setSourcesOpen]     = useState(true);
-  const [studioOpen,      setStudioOpen]      = useState(true);
-
-  // ── Chat ──────────────────────────────────────────────────────────────────
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput,    setChatInput]    = useState('');
-  const [chatLoading,  setChatLoading]  = useState(false);
-  const chatEndRef = useRef(null);
-
-  // ── Sources ───────────────────────────────────────────────────────────────
-  const [sources, setSources]             = useState([]);
-  const [addSourceOpen, setAddSourceOpen] = useState(false);
-  const [newSourceUrl,  setNewSourceUrl]  = useState('');
-  const [addingSource,  setAddingSource]  = useState(false);
-
-  // ── Player ────────────────────────────────────────────────────────────────
+  // ── Player state ───────────────────────────────────────────────────────────
+  const [currentTime, setCurrentTime]   = useState(0);
+  const [duration, setDuration]         = useState(0);
   const playerRef = useRef(null);
-  const [watchedSeconds,   setWatchedSeconds]   = useState(0);
-  const watchedSecondsRef  = useRef(0);
-  const lastTimeRef        = useRef(0);
-  const setCurrentTimeRef  = useRef(setCurrentTime);
-  setCurrentTimeRef.current = setCurrentTime;
 
-  // Auth guard
+  // ── Panel state (persisted) ────────────────────────────────────────────────
+  const saved = loadPanelState();
+  const [leftOpen, setLeftOpen]       = useState(saved.leftOpen !== false);
+  const [rightOpen, setRightOpen]     = useState(saved.rightOpen !== false);
+  const [activeStudio, setActiveStudio] = useState(saved.activeStudio || 'chat');
+  const [focusMode, setFocusMode]     = useState(false);
+
+  // ── Command palette ────────────────────────────────────────────────────────
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState('');
+  const cmdRef = useRef(null);
+
+  // ── Persist panel state ────────────────────────────────────────────────────
+  useEffect(() => {
+    savePanelState({ leftOpen, rightOpen, activeStudio });
+  }, [leftOpen, rightOpen, activeStudio]);
+
+  // ── Fetch video + segments ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!id || !user) return;
+    async function load() {
+      setDataLoading(true);
+      const { data: vid } = await supabase.from('videos').select('*').eq('id', id).single();
+      if (vid) {
+        setVideo(vid);
+        setDuration(vid.duration || 0);
+      }
+      const { data: segs } = await supabase.from('segments').select('*').eq('video_id', id).order('start_time');
+      if (segs) setSegments(segs.map(s => ({ ...s, start: s.start_time, end: s.end_time })));
+      setDataLoading(false);
+    }
+    load();
+  }, [id, user]);
+
+  // ── Auth guard ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Load video
-  const loadVideo = useCallback(async () => {
-    setLoadingVid(true);
-    const { data: vid } = await supabase.from('videos').select('*').eq('id', id).single();
-    if (!vid) { router.replace('/dashboard'); return; }
-    setVideo(vid);
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
+  useEffect(() => {
+    function onKey(e) {
+      // Don't capture when typing in inputs
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
-    // Seed sources list from DB
-    setSources([{ id: vid.id, title: vid.title || 'Main Source', type: 'video', url: vid.url }]);
-
-    const { data: segs } = await supabase.from('segments').select('*').eq('video_id', id).order('start_time');
-    if (segs?.length) {
-      setSegments(segs.map(s => ({ ...s, start: s.start_time, end: s.end_time })));
-      setLoadingVid(false);
-    } else {
-      setLoadingVid(false);
-      analyzeVideo(vid);
-    }
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { if (id && user) loadVideo(); }, [id, user, loadVideo]);
-
-  // Scroll chat to bottom on new messages
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
-
-  // ── Analyse video ─────────────────────────────────────────────────────────
-  async function analyzeVideo(vid) {
-    setAnalyzing(true);
-    try {
-      const platform = detectPlatform(vid.url);
-      const res  = await fetch('/api/analyze-video', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: vid.url, platform: platform?.platform, videoId: platform?.videoId }),
-      });
-      const data = await res.json();
-      if (!data.analysis) throw new Error('No analysis');
-      const { title, subject, expertRole, duration, segments: segs } = data.analysis;
-      const { data: updatedVid } = await supabase.from('videos')
-        .update({ title, subject, expert_role: expertRole, duration })
-        .eq('id', id).select().single();
-      setVideo(updatedVid || { ...vid, title, subject, expert_role: expertRole, duration });
-      if (segs?.length) {
-        const rows = segs.map(s => ({ video_id: id, start_time: s.start, end_time: s.end, title: s.title, topics: s.topics || [] }));
-        const { data: inserted } = await supabase.from('segments').insert(rows).select();
-        setSegments((inserted || []).map(s => ({ ...s, start: s.start_time, end: s.end_time })));
+      // Ctrl/Cmd + K → command palette
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(v => !v);
+        return;
       }
-      await awardBadge('first_watch');
-      await updateXP(50);
-    } catch (err) { console.error('Analysis failed:', err); }
-    finally { setAnalyzing(false); }
-  }
-
-  // ── Time tracking ─────────────────────────────────────────────────────────
-  const handleTimeUpdate = useCallback((t) => {
-    const diff = t - lastTimeRef.current;
-    if (diff > 0 && diff <= 2) {
-      watchedSecondsRef.current += diff;
-      setWatchedSeconds(Math.floor(watchedSecondsRef.current));
+      // Ctrl/Cmd + . → focus mode
+      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+        e.preventDefault();
+        setFocusMode(v => !v);
+        return;
+      }
+      // Escape → close panels/command palette
+      if (e.key === 'Escape') {
+        if (cmdOpen) { setCmdOpen(false); return; }
+        if (focusMode) { setFocusMode(false); return; }
+        return;
+      }
+      // / → focus search
+      if (e.key === '/' && !cmdOpen) {
+        e.preventDefault();
+        setCmdOpen(true);
+        return;
+      }
+      // Single key shortcuts
+      const tool = SHORTCUT_MAP[e.key.toLowerCase()];
+      if (tool) {
+        setActiveStudio(tool);
+        if (!rightOpen) setRightOpen(true);
+      }
     }
-    lastTimeRef.current = t;
-    setCurrentTimeRef.current(t);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cmdOpen, focusMode, rightOpen]);
+
+  // ── Focus command palette input ────────────────────────────────────────────
+  useEffect(() => {
+    if (cmdOpen && cmdRef.current) {
+      setTimeout(() => cmdRef.current?.focus(), 50);
+    }
+    if (cmdOpen) setCmdQuery('');
+  }, [cmdOpen]);
+
+  // ── Player control helpers ─────────────────────────────────────────────────
+  const handleSeek = useCallback((time) => {
+    const p = playerRef.current;
+    if (p && typeof p.seekTo === 'function') p.seekTo(time);
+    setCurrentTime(time);
   }, []);
 
-  const handleSeek  = useCallback((s) => { setCurrentTime(s); playerRef.current?.seekTo?.(s); }, []);
-  const handlePause = useCallback(() => playerRef.current?.pause?.(), []);
-  const handlePlay  = useCallback(() => playerRef.current?.play?.(), []);
+  const handlePause = useCallback(() => {
+    const p = playerRef.current;
+    if (p && typeof p.pauseVideo === 'function') p.pauseVideo();
+  }, []);
 
-  // ── Chat send ─────────────────────────────────────────────────────────────
-  async function handleSendChat(e) {
-    e?.preventDefault();
-    if (!chatInput.trim() || chatLoading) return;
-    const userMsg = { role: 'user', text: chatInput.trim() };
-    setChatMessages(prev => [...prev, userMsg]);
-    setChatInput('');
-    setChatLoading(true);
-    try {
-      const res = await fetch('/api/tutor-chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMsg.text,
-          videoTitle: video?.title,
-          subject: video?.subject,
-          segments,
-          currentTime,
-        }),
-      });
-      const data = await res.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', text: data.reply || data.message || '...' }]);
-    } catch { setChatMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, something went wrong.' }]); }
-    finally { setChatLoading(false); }
-  }
-
-  // ── Add source ────────────────────────────────────────────────────────────
-  async function handleAddSource(e) {
-    e?.preventDefault();
-    if (!newSourceUrl.trim()) return;
-    setAddingSource(true);
-    const newSrc = { id: Date.now(), title: newSourceUrl.trim(), type: 'url', url: newSourceUrl.trim() };
-    setSources(prev => [...prev, newSrc]);
-    setNewSourceUrl('');
-    setAddingSource(false);
-    setAddSourceOpen(false);
-  }
-
-  // ── Studio tool click ─────────────────────────────────────────────────────
-  function handleStudioTool(key) {
-    if (key === 'video') {
-      // Switch center panel to video player directly
-      setCenterMode('video');
-    } else if (key === 'smartboard') {
-      router.push('/smart-board');
-    } else {
-      setCenterMode(key);
+  const handleXP = useCallback((xp) => {
+    // Simple XP award
+    if (typeof window !== 'undefined') {
+      const profiles = JSON.parse(localStorage.getItem('db_profiles') || '[]');
+      const idx = profiles.findIndex(p => p.id === user?.id);
+      if (idx >= 0) {
+        profiles[idx].xp = (profiles[idx].xp || 0) + xp;
+        localStorage.setItem('db_profiles', JSON.stringify(profiles));
+      }
     }
-  }
+  }, [user]);
 
-  if (authLoading || loadingVid) {
+  // ── Focus mode effect ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (focusMode) {
+      setLeftOpen(false);
+      setRightOpen(false);
+    }
+  }, [focusMode]);
+
+  // ── Loading / auth states ──────────────────────────────────────────────────
+  if (authLoading || !user) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1A1A1A' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1C1B1F' }}>
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );
   }
-  if (!video) return null;
+
+  // ── Skeleton while loading data ────────────────────────────────────────────
+  if (dataLoading) {
+    return (
+      <>
+        <Head><title>Loading... — EduSpark AI</title></Head>
+        <div style={{ minHeight: '100vh', background: '#1C1B1F', color: '#E3E3E3' }}>
+          {/* Header skeleton */}
+          <div style={{ height: 56, borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16 }}>
+            <div style={{ width: 80, height: 16, background: '#252329', borderRadius: 8, animation: 'shimmer 1.5s infinite' }} />
+            <div style={{ flex: 1 }} />
+            <div style={{ width: 200, height: 16, background: '#252329', borderRadius: 8, animation: 'shimmer 1.5s infinite' }} />
+          </div>
+          {/* Body skeleton */}
+          <div style={{ display: 'flex', height: 'calc(100vh - 56px)' }}>
+            <div style={{ width: 280, borderRight: '1px solid rgba(255,255,255,0.08)', padding: 20 }}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ height: 40, background: '#252329', borderRadius: 10, marginBottom: 8, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.1}s` }} />
+              ))}
+            </div>
+            <div style={{ flex: 1, padding: 32 }}>
+              <div style={{ width: '100%', height: '60%', background: '#252329', borderRadius: 16, animation: 'shimmer 1.5s infinite' }} />
+            </div>
+            <div style={{ width: 300, borderLeft: '1px solid rgba(255,255,255,0.08)', padding: 20 }}>
+              {[1,2,3].map(i => (
+                <div key={i} style={{ height: 56, background: '#252329', borderRadius: 12, marginBottom: 8, animation: 'shimmer 1.5s infinite', animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#1C1B1F', color: '#9AA0A6', gap: 16 }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#A8C7FA' }}>error_outline</span>
+        <p style={{ fontSize: 16 }}>Course not found</p>
+        <Link href="/dashboard" style={{ color: '#A8C7FA', fontSize: 14, textDecoration: 'none' }}>← Back to dashboard</Link>
+      </div>
+    );
+  }
 
   const platform = detectPlatform(video.url);
 
-  // ── Shared style objects ─────────────────────────────────────────────────
-  const headerBtn = { padding: '6px 14px', borderRadius: 20, background: 'rgba(168,199,250,0.1)', color: '#A8C7FA', border: '1px solid rgba(168,199,250,0.25)', fontSize: 13, fontWeight: 500, cursor: 'pointer' };
-  const headerIconBtn = { width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#9AA0A6', cursor: 'pointer', fontSize: 16 };
-  const panelIconBtn = { width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: '#9AA0A6', cursor: 'pointer', fontSize: 14 };
+  // ── Command palette actions ────────────────────────────────────────────────
+  const cmdActions = [
+    ...STUDIO_TOOLS.map(t => ({ key: t.key, label: t.label, icon: t.icon, action: () => { setActiveStudio(t.key); setRightOpen(true); setCmdOpen(false); } })),
+    { key: 'focus', label: 'Toggle Focus Mode', icon: 'fullscreen', action: () => { setFocusMode(v => !v); setCmdOpen(false); } },
+    { key: 'left', label: 'Toggle Sources Panel', icon: 'menu', action: () => { setLeftOpen(v => !v); setCmdOpen(false); } },
+    { key: 'dashboard', label: 'Go to Dashboard', icon: 'home', action: () => { router.push('/dashboard'); setCmdOpen(false); } },
+    ...segments.map(s => ({ key: `seg-${s.id}`, label: `Jump to: ${s.title}`, icon: 'play_circle', action: () => { handleSeek(s.start); setCmdOpen(false); } })),
+  ];
+  const filteredCmd = cmdQuery ? cmdActions.filter(a => a.label.toLowerCase().includes(cmdQuery.toLowerCase())) : cmdActions;
 
-  // ── JSX ───────────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <>
-      <Head><title>{video.title} — EduSpark</title></Head>
+      <Head><title>{video.title} — EduSpark AI</title></Head>
 
-      {/* ── Root shell: full-height, no scroll on outer container ── */}
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#1A1A1A', color: '#E3E3E3', fontFamily: 'Google Sans, sans-serif', overflow: 'hidden' }}>
+      <div style={{ minHeight: '100vh', background: '#1C1B1F', color: '#E3E3E3', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Top AppBar ── */}
-        <header style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#1E1E1E', flexShrink: 0, zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Logo */}
-            <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-              <span style={{ fontSize: 20 }}>📚</span>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#E3E3E3' }}>EduSpark</span>
+        {/* ── HEADER ──────────────────────────────────────────────────── */}
+        <header style={{
+          height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+          background: '#1C1B1F', position: 'sticky', top: 0, zIndex: 100,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+            <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none', color: '#9AA0A6', flexShrink: 0 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_back</span>
             </Link>
-            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 18 }}>›</span>
-            <span style={{ fontSize: 14, color: '#9AA0A6', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#A8C7FA', flexShrink: 0 }}>auto_stories</span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#E3E3E3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {video.title}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => router.push('/dashboard')} style={headerBtn}>+ New session</button>
-            <button style={headerIconBtn} title="Share">⬆</button>
-            <button style={headerIconBtn} title="Settings">⚙</button>
-            <button onClick={signOut} style={{ ...headerIconBtn, background: 'rgba(168,199,250,0.1)', color: '#A8C7FA', borderRadius: '50%', width: 32, height: 32, fontSize: 13, fontWeight: 700 }}>
-              {user?.email?.[0]?.toUpperCase() || 'U'}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <button onClick={() => setCmdOpen(true)} style={S.headerBtn} title="Command palette (⌘K)">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>search</span>
+            </button>
+            <button onClick={() => setFocusMode(v => !v)} style={{ ...S.headerBtn, background: focusMode ? 'rgba(168,199,250,0.2)' : undefined }} title="Focus mode (⌘.)">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{focusMode ? 'fullscreen_exit' : 'fullscreen'}</span>
+            </button>
+            <button onClick={() => setLeftOpen(v => !v)} style={{ ...S.iconBtn, background: leftOpen ? 'rgba(168,199,250,0.1)' : undefined }} title="Toggle sources">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>menu</span>
+            </button>
+            <button onClick={() => setRightOpen(v => !v)} style={{ ...S.iconBtn, background: rightOpen ? 'rgba(168,199,250,0.1)' : undefined }} title="Toggle studio">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>dashboard_customize</span>
             </button>
           </div>
         </header>
 
-        {/* ── 3-Panel Body ── */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* ── 3-PANEL BODY ────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 56px)' }}>
 
-          {/* ════════════════════════════════════════════════════════════════
-              LEFT PANEL — Sources
-          ═══════════════════════════════════════════════════════════════════ */}
-          {sourcesOpen && (
-            <aside style={{ width: 300, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', background: '#1E1E1E', flexShrink: 0, overflow: 'hidden' }}>
-
-              {/* Panel header */}
-              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: '#E3E3E3' }}>Sources</span>
-                <button onClick={() => setSourcesOpen(false)} style={panelIconBtn}>⬛</button>
-              </div>
-
-              {/* Add sources button */}
-              <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <button onClick={() => setAddSourceOpen(v => !v)} style={{ width: '100%', padding: '8px 12px', border: '1px dashed rgba(255,255,255,0.18)', borderRadius: 8, background: 'transparent', color: '#A8C7FA', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  + Add sources
-                </button>
-                {addSourceOpen && (
-                  <form onSubmit={handleAddSource} style={{ marginTop: 8, display: 'flex', gap: 6 }}>
-                    <input
-                      value={newSourceUrl}
-                      onChange={e => setNewSourceUrl(e.target.value)}
-                      placeholder="Paste URL or YouTube link…"
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: '#2A2A2A', color: '#E3E3E3', fontSize: 12, outline: 'none' }}
-                    />
-                    <button type="submit" disabled={addingSource} style={{ padding: '6px 10px', borderRadius: 6, background: '#004A77', color: '#C2E7FF', border: 'none', fontSize: 12, cursor: 'pointer' }}>
-                      {addingSource ? '…' : 'Add'}
-                    </button>
-                  </form>
-                )}
-              </div>
-
-              {/* Search sources */}
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <input placeholder="Search the web for new sources" style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: '#2A2A2A', color: '#9AA0A6', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
-              </div>
-
-              {/* Sources list */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-                {sources.map((src) => (
-                  <div key={src.id} onClick={() => setCenterMode('video')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', cursor: 'pointer', borderRadius: 6, margin: '0 6px', transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>
-                      {src.type === 'video' ? '▶' : '🔗'}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#C4C7CB', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{src.title}</span>
-                    <span style={{ fontSize: 11, color: '#5F6368' }}>✓</span>
-                  </div>
-                ))}
-
-                {/* Segments as sub-sources */}
-                {segments.slice(0, 6).map((seg, i) => (
-                  <div key={seg.id || i} onClick={() => { handleSeek(seg.start); setCenterMode('video'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 30px', cursor: 'pointer', margin: '0 6px', borderRadius: 6, transition: 'background 0.15s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ fontSize: 11, color: '#9AA0A6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{seg.title}</span>
-                    <span style={{ fontSize: 10, color: '#5F6368', fontFamily: 'monospace' }}>{formatTime(seg.start)}</span>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          )}
-
-          {/* Panel re-open tabs when closed */}
-          {!sourcesOpen && (
-            <button onClick={() => setSourcesOpen(true)} style={{ width: 32, background: '#1E1E1E', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9AA0A6', cursor: 'pointer', border: 'none', flexShrink: 0 }}>
-              ›
-            </button>
-          )}
-
-
-          {/* ════════════════════════════════════════════════════════════════
-              CENTER PANEL — Chat / Active Tool
-          ═══════════════════════════════════════════════════════════════════ */}
-          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1A1A1A', minWidth: 0 }}>
-
-            {/* Center toolbar */}
-            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#1E1E1E' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: centerMode === 'chat' ? '#E3E3E3' : '#A8C7FA' }}>
-                  {centerMode === 'chat' ? 'Chat' : STUDIO_TOOLS.find(t => t.key === centerMode)?.label || centerMode}
-                </span>
-                {centerMode !== 'chat' && (
-                  <button onClick={() => setCenterMode('chat')} style={{ marginLeft: 8, fontSize: 11, color: '#9AA0A6', background: 'none', border: 'none', cursor: 'pointer' }}>← Back to Chat</button>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button style={panelIconBtn} title="Customize">⊞</button>
-                <button style={panelIconBtn} title="More options">⋮</button>
-              </div>
-            </div>
-
-            {/* ── CHAT MODE ── */}
-            {centerMode === 'chat' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-                {/* Welcome / summary area */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
-                  {chatMessages.length === 0 && (
-                    <div style={{ marginBottom: 32 }}>
-                      <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(168,199,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16 }}>📚</div>
-                      <h2 style={{ fontSize: 22, fontWeight: 700, color: '#E3E3E3', margin: '0 0 6px' }}>{video.title}</h2>
-                      <p style={{ fontSize: 13, color: '#9AA0A6', margin: '0 0 20px' }}>{segments.length} segments · {video.subject || 'General'}</p>
-                      <div style={{ fontSize: 14, color: '#C4C7CB', lineHeight: 1.7, maxWidth: 680 }}>
-                        <p>Welcome to your EduSpark session! Your sources have been analyzed and are ready. You can:</p>
-                        <ul style={{ paddingLeft: 20, marginTop: 8, color: '#9AA0A6' }}>
-                          <li>Ask any question about the content in the chat below</li>
-                          <li>Use the <strong style={{ color: '#A8C7FA' }}>Studio panel →</strong> to generate podcasts, quizzes, slides, and more</li>
-                          <li>Click any segment in the Sources panel to jump directly to that part of the video</li>
-                        </ul>
-                      </div>
-
-                      {/* Quick suggestion chips */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 24 }}>
-                        {['Summarize key concepts', 'Generate a quiz', 'What are the main topics?', 'Create flashcards'].map(q => (
-                          <button key={q} onClick={() => { setChatInput(q); }} style={{ padding: '7px 14px', borderRadius: 20, border: '1px solid rgba(168,199,250,0.25)', background: 'rgba(168,199,250,0.08)', color: '#A8C7FA', fontSize: 12, cursor: 'pointer' }}>
-                            {q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Chat messages */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {chatMessages.map((m, i) => (
-                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', gap: 4 }}>
-                        <div style={{
-                          maxWidth: '80%', padding: '10px 16px', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                          background: m.role === 'user' ? '#004A77' : '#242424',
-                          color: m.role === 'user' ? '#C2E7FF' : '#E3E3E3',
-                          fontSize: 14, lineHeight: 1.6,
-                          border: m.role === 'assistant' ? '1px solid rgba(255,255,255,0.08)' : 'none'
-                        }}>
-                          {m.text}
-                        </div>
-                      </div>
-                    ))}
-                    {chatLoading && (
-                      <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '10px 0' }}>
-                        {[0, 0.15, 0.3].map((d, i) => (
-                          <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#9AA0A6', display: 'inline-block', animation: 'bounce 1s infinite', animationDelay: `${d}s` }} />
-                        ))}
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-                </div>
-
-                {/* Chat input */}
-                <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', background: '#1E1E1E', flexShrink: 0 }}>
-                  <form onSubmit={handleSendChat} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#2A2A2A', borderRadius: 24, padding: '10px 16px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <input
-                      value={chatInput}
-                      onChange={e => setChatInput(e.target.value)}
-                      placeholder="Ask a question or create something"
-                      style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E3E3E3', fontSize: 14 }}
-                    />
-                    <span style={{ fontSize: 12, color: '#5F6368', marginRight: 4 }}>{segments.length} sources</span>
-                    <button type="submit" disabled={chatLoading || !chatInput.trim()} style={{ width: 32, height: 32, borderRadius: '50%', background: chatInput.trim() ? '#004A77' : 'rgba(255,255,255,0.08)', border: 'none', color: chatInput.trim() ? '#C2E7FF' : '#5F6368', cursor: chatInput.trim() ? 'pointer' : 'default', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      →
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* ── VIDEO MODE ── */}
-            {centerMode === 'video' && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-                {['pdf', 'document', 'website'].includes(video.platform) ? (
-                  <DocumentReader video={video} segments={segments} currentTime={currentTime} onSeek={handleSeek} />
-                ) : (
-                  <>
-                    <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      {platform?.platform === 'youtube' ? (
-                        <YouTubePlayer ref={playerRef} videoId={platform.videoId} onTimeUpdate={handleTimeUpdate} />
-                      ) : (
-                        <HTML5Player ref={playerRef} url={video.url} onTimeUpdate={handleTimeUpdate} />
-                      )}
-                      {analyzing && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(26,26,26,0.9)', backdropFilter: 'blur(8px)' }}>
-                          <div className="spinner" style={{ width: 40, height: 40 }} />
-                          <p style={{ fontSize: 13, color: '#9AA0A6' }}>Analyzing with AI…</p>
-                        </div>
-                      )}
-                    </div>
-                    <SegmentTimeline segments={segments} currentTime={currentTime} watchedSeconds={watchedSeconds} duration={video.duration} onSeek={handleSeek} />
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#E3E3E3', margin: '0 0 4px' }}>{video.title}</h2>
-                      <p style={{ fontSize: 12, color: '#9AA0A6' }}>{video.subject} · {video.expert_role}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* ── TOOL MODES: Quiz, Flashcards, Mindmap, Notes, Podcast ── */}
-            {centerMode === 'quiz'       && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><QuizPanel video={video} segments={segments} videoId={id} onXP={updateXP} /></div>}
-            {centerMode === 'flashcards' && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><FlashcardDeck video={video} segments={segments} /></div>}
-            {centerMode === 'mindmap'    && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><MindMapPanel video={video} segments={segments} /></div>}
-            {centerMode === 'notes'      && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><NotesPanel videoId={id} videoTitle={video.title} /></div>}
-            {centerMode === 'podcast'    && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><PodcastPanel video={video} segments={segments} /></div>}
-            {centerMode === 'slides'     && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: '100%', maxWidth: 680, background: '#242424', borderRadius: 12, padding: 32, border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
-                  <span style={{ fontSize: 32 }}>📊</span>
-                  <h3 style={{ color: '#E3E3E3', margin: '12px 0 8px', fontSize: 18, fontWeight: 700 }}>Slide Deck</h3>
-                  <p style={{ color: '#9AA0A6', fontSize: 13, marginBottom: 20 }}>Auto-generate presentation slides from your video content</p>
-                  <button onClick={() => alert('Generating slides…')} style={{ padding: '10px 24px', borderRadius: 8, background: '#004A77', color: '#C2E7FF', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Generate Slides</button>
-                </div>
-              </div>
-            )}
-          </main>
-
-
-          {/* ── RIGHT PANEL: Studio ── */}
+          {/* ── LEFT: Sources Panel ────────────────────────────────────── */}
           <aside style={{
-            width: 280, minWidth: 240, maxWidth: 320,
-            background: '#1D1D1D', borderLeft: '1px solid rgba(255,255,255,0.08)',
-            display: 'flex', flexDirection: 'column', overflowY: 'auto',
+            width: leftOpen && !focusMode ? 280 : 0,
+            minWidth: leftOpen && !focusMode ? 280 : 0,
+            borderRight: leftOpen ? '1px solid rgba(255,255,255,0.08)' : 'none',
+            overflow: 'hidden', transition: 'width 200ms ease-out, min-width 200ms ease-out',
+            display: 'flex', flexDirection: 'column', background: '#1C1B1F',
           }}>
-            {/* Studio header */}
-            <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: '#E3E3E3' }}>Studio</span>
-              <button onClick={() => setStudioOpen(false)} style={{ background: 'none', border: 'none', color: '#9AA0A6', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>⊟</button>
-            </div>
-
-            {/* Studio tool grid */}
-            <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { icon: '🎙️', label: 'Audio Overview', mode: 'podcast' },
-                { icon: '📊', label: 'Slide Deck',     mode: 'slides' },
-                { icon: '🎬', label: 'Video Player',   mode: 'video' },
-                { icon: '🧠', label: 'Mind Map',       mode: 'mindmap' },
-                { icon: '📋', label: 'Quiz',           mode: 'quiz' },
-                { icon: '🃏', label: 'Flashcards',     mode: 'flashcards' },
-                { icon: '📝', label: 'Notes',          mode: 'notes' },
-                { icon: '🖊️', label: 'Smart Board',   mode: 'smartboard' },
-              ].map(({ icon, label, mode }) => (
-                <button
-                  key={mode}
-                  onClick={() => setCenterMode(mode)}
-                  style={{
-                    background: centerMode === mode ? 'rgba(168,199,250,0.15)' : '#242424',
-                    border: centerMode === mode ? '1px solid rgba(168,199,250,0.35)' : '1px solid rgba(255,255,255,0.07)',
-                    borderRadius: 10, padding: '12px 8px', cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <span style={{ fontSize: 22 }}>{icon}</span>
-                  <span style={{ fontSize: 11, color: centerMode === mode ? '#A8C7FA' : '#9AA0A6', fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
+            <div style={{ padding: '16px 14px', overflow: 'auto', flex: 1 }}>
+              {/* Sources header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#E3E3E3', letterSpacing: 0.3 }}>Sources</span>
+                <button style={S.iconBtn} title="Collapse">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>left_panel_close</span>
                 </button>
-              ))}
-            </div>
-
-            {/* Divider */}
-            <div style={{ margin: '4px 12px', borderTop: '1px solid rgba(255,255,255,0.07)' }} />
-
-            {/* XP / Progress card */}
-            <div style={{ margin: '8px 12px', background: '#242424', borderRadius: 10, padding: 14, border: '1px solid rgba(255,255,255,0.07)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, color: '#9AA0A6', fontWeight: 500 }}>Your XP</span>
-                <span style={{ fontSize: 12, color: '#A8C7FA', fontWeight: 700 }}>{xp} pts</span>
               </div>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${Math.min((xp % 500) / 5, 100)}%` }} />
+
+              {/* Add sources */}
+              <button style={{
+                width: '100%', padding: '10px 14px', borderRadius: 12,
+                background: 'rgba(168,199,250,0.08)', border: '1px dashed rgba(168,199,250,0.3)',
+                color: '#A8C7FA', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                transition: 'background 200ms',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                Add sources
+              </button>
+
+              {/* Source URL */}
+              <div style={{ marginTop: 20, marginBottom: 8, fontSize: 10, fontWeight: 600, color: '#9AA0A6', textTransform: 'uppercase', letterSpacing: 1 }}>
+                Current Source
               </div>
-              <p style={{ fontSize: 11, color: '#9AA0A6', marginTop: 6 }}>{500 - (xp % 500)} XP to next level</p>
-            </div>
+              <div style={{
+                padding: '10px 12px', borderRadius: 10,
+                background: '#252329', border: '1px solid rgba(255,255,255,0.08)',
+                fontSize: 12, color: '#E3E3E3', display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#A8C7FA' }}>
+                  {platform?.platform === 'youtube' ? 'smart_display' : 'description'}
+                </span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {video.title}
+                </span>
+              </div>
 
-            {/* Smart Board quick-launch */}
-            <div style={{ margin: '0 12px 8px' }}>
-              <button
-                onClick={() => router.push('/smart-board')}
-                style={{
-                  width: '100%', padding: '10px 16px', borderRadius: 10,
-                  background: '#004A77', color: '#C2E7FF', border: 'none',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
-                }}
-              >
-                <span>🖊️</span> Open Smart Board
-              </button>
-            </div>
+              {/* Chapter nav */}
+              <div style={{ marginTop: 24, marginBottom: 8, fontSize: 10, fontWeight: 600, color: '#9AA0A6', textTransform: 'uppercase', letterSpacing: 1 }}>
+                Chapters ({segments.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {segments.map((seg, i) => {
+                  const isActive = currentTime >= seg.start && currentTime < seg.end;
+                  return (
+                    <button key={seg.id} onClick={() => handleSeek(seg.start)} style={{
+                      padding: '8px 10px', borderRadius: 8, border: 'none',
+                      background: isActive ? 'rgba(168,199,250,0.12)' : 'transparent',
+                      color: isActive ? '#A8C7FA' : '#9AA0A6',
+                      fontSize: 12, textAlign: 'left', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      transition: 'all 150ms ease-out',
+                    }}>
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B6B70', minWidth: 36 }}>
+                        {formatTime(seg.start)}
+                      </span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {seg.title}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Add note */}
-            <div style={{ margin: '0 12px 12px' }}>
-              <button
-                onClick={() => setCenterMode('notes')}
-                style={{
-                  width: '100%', padding: '10px 16px', borderRadius: 10,
-                  background: '#242424', color: '#E3E3E3',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
-                }}
-              >
-                <span>📝</span> Add note
-              </button>
+              {/* Bookmarks */}
+              <div style={{ marginTop: 24 }}>
+                <BookmarksPanel videoId={id} currentTime={currentTime} onSeek={handleSeek} />
+              </div>
             </div>
           </aside>
-        </div>{/* end flex row */}
-      </div>{/* end outer wrapper */}
+
+          {/* ── CENTER: Main Content ───────────────────────────────────── */}
+          <main style={{
+            flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column',
+            minWidth: 0, transition: 'all 200ms ease-out',
+          }}>
+            {/* Video / Document player */}
+            <div style={{ padding: focusMode ? '16px' : '24px 32px', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Player area */}
+              <div style={{
+                width: '100%', maxWidth: focusMode ? '100%' : 960,
+                margin: '0 auto', borderRadius: 16, overflow: 'hidden',
+                background: '#000', aspectRatio: '16/9',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+              }}>
+                {platform?.platform === 'youtube' ? (
+                  <YouTubePlayer
+                    ref={playerRef}
+                    videoId={platform.videoId}
+                    onTimeUpdate={setCurrentTime}
+                  />
+                ) : (
+                  <HTML5Player
+                    ref={playerRef}
+                    src={video.url}
+                    onTimeUpdate={setCurrentTime}
+                  />
+                )}
+              </div>
+
+              {/* Video info */}
+              <div style={{ maxWidth: 960, margin: '0 auto', width: '100%' }}>
+                <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0, lineHeight: 1.4 }}>{video.title}</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, fontSize: 13, color: '#9AA0A6' }}>
+                  <span>{segments.length} chapters</span>
+                  <span>•</span>
+                  <span>{video.subject || 'General'}</span>
+                  {video.created_at && (
+                    <>
+                      <span>•</span>
+                      <span>{new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Segment timeline (below video) */}
+              {segments.length > 0 && (
+                <div style={{ maxWidth: 960, margin: '0 auto', width: '100%' }}>
+                  <SegmentTimeline
+                    segments={segments}
+                    currentTime={currentTime}
+                    duration={duration}
+                    onSeek={handleSeek}
+                  />
+                </div>
+              )}
+            </div>
+          </main>
+
+          {/* ── RIGHT: AI Studio Panel ─────────────────────────────────── */}
+          <aside style={{
+            width: rightOpen && !focusMode ? 360 : 0,
+            minWidth: rightOpen && !focusMode ? 360 : 0,
+            borderLeft: rightOpen ? '1px solid rgba(255,255,255,0.08)' : 'none',
+            overflow: 'hidden', transition: 'width 200ms ease-out, min-width 200ms ease-out',
+            display: 'flex', flexDirection: 'column', background: '#1C1B1F',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              {/* Studio header */}
+              <div style={{
+                padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#E3E3E3', letterSpacing: 0.3 }}>Studio</span>
+                <button style={S.iconBtn} onClick={() => setRightOpen(false)} title="Close studio">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>right_panel_close</span>
+                </button>
+              </div>
+
+              {/* Tool tabs — horizontal scrolling */}
+              <div style={{
+                display: 'flex', gap: 2, padding: '8px 12px', flexShrink: 0,
+                borderBottom: '1px solid rgba(255,255,255,0.06)', overflowX: 'auto',
+              }}>
+                {STUDIO_TOOLS.map(tool => (
+                  <button key={tool.key} onClick={() => setActiveStudio(tool.key)} style={{
+                    padding: '6px 10px', borderRadius: 8, border: 'none',
+                    background: activeStudio === tool.key ? 'rgba(168,199,250,0.12)' : 'transparent',
+                    color: activeStudio === tool.key ? '#A8C7FA' : '#9AA0A6',
+                    fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    transition: 'all 150ms ease-out', whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{tool.icon}</span>
+                    {tool.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active tool content */}
+              <div style={{ flex: 1, overflow: 'auto' }}>
+                {activeStudio === 'chat' && (
+                  <RaiseHandPanel
+                    video={video}
+                    segments={segments}
+                    currentTime={currentTime}
+                    onClose={() => {}}
+                    onPause={handlePause}
+                  />
+                )}
+                {activeStudio === 'quiz' && (
+                  <QuizPanel
+                    video={video}
+                    segments={segments}
+                    videoId={id}
+                    onXP={handleXP}
+                  />
+                )}
+                {activeStudio === 'flashcards' && (
+                  <FlashcardDeck video={video} segments={segments} />
+                )}
+                {activeStudio === 'mindmap' && (
+                  <MindMapPanel video={video} segments={segments} />
+                )}
+                {activeStudio === 'notes' && (
+                  <NotesPanel videoId={id} videoTitle={video.title} />
+                )}
+                {activeStudio === 'podcast' && (
+                  <PodcastPanel video={video} segments={segments} />
+                )}
+              </div>
+
+              {/* Keyboard hint */}
+              <div style={{
+                padding: '8px 16px', borderTop: '1px solid rgba(255,255,255,0.06)',
+                fontSize: 10, color: '#6B6B70', display: 'flex', gap: 12, flexShrink: 0,
+              }}>
+                <span>⌘K search</span>
+                <span>⌘. focus</span>
+                <span>Q quiz</span>
+                <span>C chat</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {/* ── COMMAND PALETTE ──────────────────────────────────────────── */}
+        {cmdOpen && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            paddingTop: '20vh',
+          }} onClick={() => setCmdOpen(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              width: '100%', maxWidth: 520, background: '#252329',
+              borderRadius: 16, border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+              overflow: 'hidden',
+              animation: 'cmdIn 150ms ease-out',
+            }}>
+              {/* Search input */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#9AA0A6' }}>search</span>
+                <input
+                  ref={cmdRef}
+                  value={cmdQuery}
+                  onChange={e => setCmdQuery(e.target.value)}
+                  placeholder="Search tools, chapters, actions..."
+                  style={{
+                    flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                    color: '#E3E3E3', fontSize: 15, fontFamily: 'inherit',
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') setCmdOpen(false);
+                    if (e.key === 'Enter' && filteredCmd.length > 0) filteredCmd[0].action();
+                  }}
+                />
+                <kbd style={{ padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.06)', color: '#9AA0A6', fontSize: 10, fontFamily: 'monospace' }}>ESC</kbd>
+              </div>
+              {/* Results */}
+              <div style={{ maxHeight: 300, overflow: 'auto', padding: '6px' }}>
+                {filteredCmd.map(action => (
+                  <button key={action.key} onClick={action.action} style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                    background: 'transparent', border: 'none',
+                    color: '#E3E3E3', fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'background 100ms',
+                  }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(168,199,250,0.08)'}
+                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#A8C7FA' }}>{action.icon}</span>
+                    <span>{action.label}</span>
+                  </button>
+                ))}
+                {filteredCmd.length === 0 && (
+                  <div style={{ padding: '20px', textAlign: 'center', color: '#6B6B70', fontSize: 13 }}>
+                    No results found
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style jsx>{`
+        @keyframes cmdIn {
+          from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes shimmer {
+          0% { opacity: 0.5; }
+          50% { opacity: 0.8; }
+          100% { opacity: 0.5; }
+        }
+      `}</style>
     </>
   );
 }
+
+// ── Shared inline styles ─────────────────────────────────────────────────────
+const S = {
+  headerBtn: {
+    padding: '6px 12px', borderRadius: 8,
+    background: 'rgba(255,255,255,0.06)', color: '#9AA0A6',
+    border: '1px solid rgba(255,255,255,0.08)',
+    fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    transition: 'all 150ms ease-out',
+  },
+  iconBtn: {
+    width: 32, height: 32, borderRadius: 8,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(255,255,255,0.04)',
+    border: '1px solid rgba(255,255,255,0.06)',
+    color: '#9AA0A6', cursor: 'pointer', fontSize: 15,
+    transition: 'all 150ms ease-out',
+  },
+};
