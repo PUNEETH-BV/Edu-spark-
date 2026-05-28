@@ -436,12 +436,7 @@ export default function PlayerPage() {
                 </p>
               </div>
 
-              {/* Segment timeline */}
-              {segments.length > 0 && (
-                <div style={{ marginTop: 16 }}>
-                  <SegmentTimeline segments={segments} currentTime={currentTime} duration={duration} onSeek={handleSeek} />
-                </div>
-              )}
+
 
               {/* Spacer */}
               <div style={{ flex: 1 }} />
@@ -576,6 +571,11 @@ export default function PlayerPage() {
                             <div style={{ marginTop: 12, fontSize: 12, color: '#9AA0A6' }}>
                               {formatTime(currentTime)} / {formatTime(duration)}
                             </div>
+                            {segments.length > 0 && (
+                              <div style={{ marginTop: 12 }}>
+                                <SegmentTimeline segments={segments} currentTime={currentTime} duration={duration} onSeek={handleSeek} />
+                              </div>
+                            )}
                           </div>
                         )}
                         {activeTool === 'chat' && (
