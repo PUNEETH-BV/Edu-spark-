@@ -395,69 +395,105 @@ export default function PlayerPage() {
             </div>
           </aside>
 
-          {/* ═══ CENTER: Chat / AI Summary ════════════════════════════ */}
+          {/* ═══ CENTER: Video Player OR Chat/Summary ═════════════════ */}
           <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <div style={{ padding: '32px', flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 800, margin: '0 auto', width: '100%' }}>
-              {/* Customize button */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-                <button style={{ ...S.headerBtn, fontSize: 12 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>tune</span>
-                  Customize
+            {activeTool === 'video' ? (
+              /* ── Video Player (full center) ──────────────────────── */
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 20 }}>
+                {/* Back to summary */}
+                <button onClick={() => setActiveTool(null)} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 16,
+                  background: 'none', border: 'none', color: '#9AA0A6', fontSize: 13, cursor: 'pointer',
+                  padding: 0, transition: 'color 150ms',
+                }} onMouseEnter={e => e.currentTarget.style.color = '#A8C7FA'}
+                   onMouseLeave={e => e.currentTarget.style.color = '#9AA0A6'}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_back</span>
+                  Back to overview
                 </button>
-              </div>
-
-              {/* Course title card */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
+                {/* Player */}
                 <div style={{
-                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-                  background: 'rgba(168,199,250,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                  width: '100%', borderRadius: 16, overflow: 'hidden',
+                  background: '#000', aspectRatio: '16/9',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.4)', flexShrink: 0,
                 }}>
-                  {video.platform === 'youtube' ? '🎬' : '📄'}
+                  {platform?.platform === 'youtube' ? (
+                    <YouTubePlayer ref={playerRef} videoId={platform.videoId} onTimeUpdate={setCurrentTime} />
+                  ) : (
+                    <HTML5Player ref={playerRef} src={video.url} onTimeUpdate={setCurrentTime} />
+                  )}
                 </div>
-                <div>
-                  <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, lineHeight: 1.35 }}>{video.title}</h1>
-                  <p style={{ fontSize: 13, color: '#9AA0A6', margin: '6px 0 0' }}>
-                    {segments.length} sources · {video.created_at ? new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                {/* Timeline + time */}
+                <div style={{ marginTop: 12, fontSize: 12, color: '#9AA0A6' }}>
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </div>
+                {segments.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <SegmentTimeline segments={segments} currentTime={currentTime} duration={duration} onSeek={handleSeek} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── Chat / AI Summary (default) ────────────────────── */
+              <div style={{ padding: '32px', flex: 1, display: 'flex', flexDirection: 'column', maxWidth: 800, margin: '0 auto', width: '100%' }}>
+                {/* Customize button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+                  <button style={{ ...S.headerBtn, fontSize: 12 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>tune</span>
+                    Customize
+                  </button>
+                </div>
+
+                {/* Course title card */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 24 }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                    background: 'rgba(168,199,250,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+                  }}>
+                    {video.platform === 'youtube' ? '🎬' : '📄'}
+                  </div>
+                  <div>
+                    <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, lineHeight: 1.35 }}>{video.title}</h1>
+                    <p style={{ fontSize: 13, color: '#9AA0A6', margin: '6px 0 0' }}>
+                      {segments.length} sources · {video.created_at ? new Date(video.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* AI Summary */}
+                <div style={{
+                  fontSize: 15, lineHeight: 1.75, color: '#D1D1D1',
+                  padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <p style={{ margin: 0 }}>
+                    This course covers <strong style={{ color: '#E3E3E3' }}>{video.subject || 'key concepts'}</strong> across{' '}
+                    <strong style={{ color: '#E3E3E3' }}>{segments.length} chapters</strong>.{' '}
+                    {segments.length > 0 && <>Topics include <strong style={{ color: '#E3E3E3' }}>{segments.slice(0, 3).map(s => s.title).join(', ')}</strong>{segments.length > 3 ? `, and ${segments.length - 3} more sections` : ''}.</>}
+                    {' '}Use the <strong style={{ color: '#A8C7FA' }}>Studio panel</strong> on the right to generate quizzes, flashcards, mind maps, or start an AI conversation about the content.
                   </p>
                 </div>
+
+                {/* Spacer */}
+                <div style={{ flex: 1 }} />
+
+                {/* Chat input at bottom */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px',
+                  background: '#252329', borderRadius: 28, border: '1px solid rgba(255,255,255,0.1)',
+                  marginTop: 32, position: 'sticky', bottom: 16,
+                }}>
+                  <input
+                    placeholder="Ask a question or create something"
+                    style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit' }}
+                    onFocus={() => { setActiveTool('chat'); setRightOpen(true); }}
+                  />
+                  <span style={{ fontSize: 12, color: '#6B6B70', marginRight: 4 }}>{allSources.length} sources</span>
+                  <button style={{ ...S.iconBtn, background: '#004A77', color: '#C2E7FF', border: 'none' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_upward</span>
+                  </button>
+                </div>
               </div>
-
-              {/* AI Summary */}
-              <div style={{
-                fontSize: 15, lineHeight: 1.75, color: '#D1D1D1',
-                padding: '20px 0', borderTop: '1px solid rgba(255,255,255,0.06)',
-              }}>
-                <p style={{ margin: 0 }}>
-                  This course covers <strong style={{ color: '#E3E3E3' }}>{video.subject || 'key concepts'}</strong> across{' '}
-                  <strong style={{ color: '#E3E3E3' }}>{segments.length} chapters</strong>.{' '}
-                  {segments.length > 0 && <>Topics include <strong style={{ color: '#E3E3E3' }}>{segments.slice(0, 3).map(s => s.title).join(', ')}</strong>{segments.length > 3 ? `, and ${segments.length - 3} more sections` : ''}.</>}
-                  {' '}Use the <strong style={{ color: '#A8C7FA' }}>Studio panel</strong> on the right to generate quizzes, flashcards, mind maps, or start an AI conversation about the content.
-                </p>
-              </div>
-
-
-
-              {/* Spacer */}
-              <div style={{ flex: 1 }} />
-
-              {/* Chat input at bottom */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px',
-                background: '#252329', borderRadius: 28, border: '1px solid rgba(255,255,255,0.1)',
-                marginTop: 32, position: 'sticky', bottom: 16,
-              }}>
-                <input
-                  placeholder="Ask a question or create something"
-                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit' }}
-                  onFocus={() => { setActiveTool('chat'); setRightOpen(true); }}
-                />
-                <span style={{ fontSize: 12, color: '#6B6B70', marginRight: 4 }}>{allSources.length} sources</span>
-                <button style={{ ...S.iconBtn, background: '#004A77', color: '#C2E7FF', border: 'none' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_upward</span>
-                </button>
-              </div>
-            </div>
+            )}
           </main>
 
           {/* ═══ RIGHT: AI Studio ═════════════════════════════════════ */}
@@ -498,14 +534,6 @@ export default function PlayerPage() {
                   {!activeTool ? (
                     /* ── Tool Grid (NotebookLM-style 2-col cards) ────────── */
                     <div style={{ padding: '8px 14px 20px' }}>
-                      {/* Language banner */}
-                      <div style={{
-                        padding: '12px 16px', borderRadius: 12, marginBottom: 14,
-                        background: 'rgba(168,199,250,0.06)', border: '1px solid rgba(168,199,250,0.12)',
-                        fontSize: 12, color: '#9AA0A6', lineHeight: 1.5,
-                      }}>
-                        Create an Audio Overview in: <span style={{ color: '#A8C7FA' }}>हिन्दी , বাংলা , ગુજરાતી , ಕನ್ನಡ , മലയാളം , मराठी , ਪੰਜਾਬੀ , தமிழ் , తెలుగు</span>
-                      </div>
 
                       {/* 2-column tool cards */}
                       <div style={{
@@ -559,25 +587,7 @@ export default function PlayerPage() {
 
                       {/* Tool content */}
                       <div style={{ flex: 1, overflow: 'auto' }}>
-                        {activeTool === 'video' && (
-                          <div style={{ padding: 16 }}>
-                            <div style={{ borderRadius: 12, overflow: 'hidden', background: '#000', aspectRatio: '16/9', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
-                              {platform?.platform === 'youtube' ? (
-                                <YouTubePlayer ref={playerRef} videoId={platform.videoId} onTimeUpdate={setCurrentTime} />
-                              ) : (
-                                <HTML5Player ref={playerRef} src={video.url} onTimeUpdate={setCurrentTime} />
-                              )}
-                            </div>
-                            <div style={{ marginTop: 12, fontSize: 12, color: '#9AA0A6' }}>
-                              {formatTime(currentTime)} / {formatTime(duration)}
-                            </div>
-                            {segments.length > 0 && (
-                              <div style={{ marginTop: 12 }}>
-                                <SegmentTimeline segments={segments} currentTime={currentTime} duration={duration} onSeek={handleSeek} />
-                              </div>
-                            )}
-                          </div>
-                        )}
+
                         {activeTool === 'chat' && (
                           <RaiseHandPanel video={video} segments={segments} currentTime={currentTime} onClose={() => setActiveTool(null)} onPause={handlePause} />
                         )}
