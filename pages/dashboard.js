@@ -340,7 +340,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* ── CREATE COURSE MODAL ──────────────────────────────────── */}
+        {/* ── CREATE COURSE MODAL (NotebookLM-style) ─────────────── */}
         {showCreate && (
           <div style={{
             position: 'fixed', inset: 0, zIndex: 9999,
@@ -348,74 +348,124 @@ export default function Dashboard() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }} onClick={() => setShowCreate(false)}>
             <div onClick={e => e.stopPropagation()} style={{
-              width: '100%', maxWidth: 480, background: '#252329',
-              borderRadius: 20, border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.5)', padding: 32,
-              animation: 'modalIn 200ms ease-out',
+              width: '100%', maxWidth: 580, background: '#1C1B1F',
+              borderRadius: 24, border: '1px solid rgba(255,255,255,0.12)',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.5)', padding: '36px 32px',
+              animation: 'modalIn 200ms ease-out', position: 'relative',
             }}>
-              <h2 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 24px' }}>Create new course</h2>
+              {/* Close button */}
+              <button onClick={() => setShowCreate(false)} style={{
+                position: 'absolute', top: 16, right: 16,
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.06)', border: 'none',
+                color: '#9AA0A6', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+              </button>
 
-              <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Video or Document URL *</label>
+              {/* Title */}
+              <h2 style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', textAlign: 'center', lineHeight: 1.4 }}>
+                Create Audio and Video Overviews from
+              </h2>
+              <p style={{ textAlign: 'center', margin: '0 0 24px', fontSize: 18, fontWeight: 600 }}>
+                <span style={{ background: 'linear-gradient(90deg, #81C995, #A8C7FA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>your documents</span>
+              </p>
+
+              {/* Search bar (Resource Ranker) */}
+              <div style={{
+                borderRadius: 14, border: '1px solid rgba(100,150,255,0.3)',
+                padding: '14px 16px', marginBottom: 20,
+              }}>
+                <form onSubmit={handleCreate}>
                   <input
                     value={newUrl}
                     onChange={e => setNewUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
+                    placeholder="Search the web for new sources"
                     style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 10,
-                      background: '#1C1B1F', border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
+                      width: '100%', background: 'transparent', border: 'none', outline: 'none',
+                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', marginBottom: 12,
                     }}
                   />
-                </div>
+                  {/* Web / Fast Research toggles */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {[
+                      { key: 'web', icon: 'language', label: 'Web' },
+                      { key: 'fast', icon: 'bolt', label: 'Fast Research' },
+                    ].map(m => (
+                      <button key={m.key} type="button" style={{
+                        padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                        background: 'rgba(255,255,255,0.08)', color: '#E3E3E3',
+                        border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{m.icon}</span>
+                        {m.label}
+                        <span className="material-symbols-outlined" style={{ fontSize: 12, opacity: 0.5 }}>expand_more</span>
+                      </button>
+                    ))}
+                    <button type="submit" disabled={creating} style={{
+                      width: 32, height: 32, borderRadius: '50%', marginLeft: 'auto',
+                      background: 'rgba(255,255,255,0.08)', border: 'none',
+                      color: '#9AA0A6', cursor: creating ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{creating ? 'hourglass_empty' : 'search'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
 
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Course Title</label>
-                  <input
-                    value={newTitle}
-                    onChange={e => setNewTitle(e.target.value)}
-                    placeholder="e.g. Introduction to Machine Learning"
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 10,
-                      background: '#1C1B1F', border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
-                    }}
-                  />
-                </div>
+              {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: '0 0 12px', textAlign: 'center' }}>{error}</p>}
 
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 500, color: '#9AA0A6', display: 'block', marginBottom: 6 }}>Subject</label>
-                  <input
-                    value={newSubject}
-                    onChange={e => setNewSubject(e.target.value)}
-                    placeholder="e.g. Machine Learning, Biology, Math"
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 10,
-                      background: '#1C1B1F', border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#E3E3E3', fontSize: 14, fontFamily: 'inherit', outline: 'none',
-                    }}
-                  />
-                </div>
+              {/* Drop zone */}
+              <div style={{
+                borderRadius: 14, border: '2px dashed rgba(255,255,255,0.15)',
+                padding: '40px 20px', textAlign: 'center',
+                transition: 'border-color 200ms',
+              }}>
+                <p style={{ fontSize: 16, fontWeight: 500, color: '#E3E3E3', margin: '0 0 8px' }}>
+                  or drop your files
+                </p>
+                <p style={{ fontSize: 13, color: '#9AA0A6', margin: 0 }}>
+                  pdf, images, docs, audio, <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>and more</span>
+                </p>
+              </div>
 
-                {error && <p style={{ color: '#F2B8B8', fontSize: 13, margin: 0 }}>{error}</p>}
-
-                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                  <button type="button" onClick={() => setShowCreate(false)} style={{
-                    flex: 1, padding: '10px', borderRadius: 10,
-                    background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                    color: '#9AA0A6', fontSize: 14, fontWeight: 500, cursor: 'pointer',
-                  }}>Cancel</button>
-                  <button type="submit" disabled={creating} style={{
-                    flex: 1, padding: '10px', borderRadius: 10,
-                    background: '#004A77', border: 'none',
-                    color: '#C2E7FF', fontSize: 14, fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer',
-                    opacity: creating ? 0.6 : 1,
-                  }}>
-                    {creating ? 'Creating...' : 'Create'}
+              {/* Source type buttons */}
+              <div style={{
+                display: 'flex', justifyContent: 'center', gap: 10, marginTop: 20, flexWrap: 'wrap',
+              }}>
+                {[
+                  { icon: 'upload_file', label: 'Upload files' },
+                  { icon: 'link', label: 'Websites', extra: '🔴' },
+                  { icon: 'cloud', label: 'Drive' },
+                  { icon: 'content_paste', label: 'Copied text' },
+                ].map(btn => (
+                  <button key={btn.label} onClick={() => {
+                    if (btn.label === 'Websites') {
+                      // Focus the URL input
+                      const inp = document.querySelector('[placeholder="Search the web for new sources"]');
+                      if (inp) inp.focus();
+                    }
+                  }} style={{
+                    padding: '8px 18px', borderRadius: 20,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#E3E3E3', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    transition: 'all 150ms',
+                  }} onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(168,199,250,0.3)'; }}
+                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{btn.icon}</span>
+                    {btn.extra && <span style={{ fontSize: 10 }}>{btn.extra}</span>}
+                    {btn.label}
                   </button>
-                </div>
-              </form>
+                ))}
+              </div>
+
+              {/* Hidden: title and subject for now (auto-inferred) */}
+              <input type="hidden" value={newTitle} />
+              <input type="hidden" value={newSubject} />
             </div>
           </div>
         )}
