@@ -6,149 +6,98 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { detectPlatform, formatTime } from '@/lib/videoUtils';
 
-import YouTubePlayer    from '@/components/players/YouTubePlayer';
-import HTML5Player      from '@/components/players/HTML5Player';
-import SegmentTimeline  from '@/components/player/SegmentTimeline';
-import RaiseHandPanel   from '@/components/player/RaiseHandPanel';
-import BookmarksPanel   from '@/components/player/BookmarksPanel';
-import QuizPanel        from '@/components/player/QuizPanel';
-import FlashcardDeck    from '@/components/player/FlashcardDeck';
-import NotesPanel       from '@/components/player/NotesPanel';
-import MindMapPanel     from '@/components/player/MindMapPanel';
-import PodcastPanel     from '@/components/player/PodcastPanel';
-import DocumentReader   from '@/components/player/DocumentReader';
+import YouTubePlayer   from '@/components/players/YouTubePlayer';
+import HTML5Player     from '@/components/players/HTML5Player';
+import SegmentTimeline from '@/components/player/SegmentTimeline';
+import RaiseHandPanel  from '@/components/player/RaiseHandPanel';
+import BookmarksPanel  from '@/components/player/BookmarksPanel';
+import QuizPanel       from '@/components/player/QuizPanel';
+import FlashcardDeck   from '@/components/player/FlashcardDeck';
+import NotesPanel      from '@/components/player/NotesPanel';
+import MindMapPanel    from '@/components/player/MindMapPanel';
+import PodcastPanel    from '@/components/player/PodcastPanel';
+import DocumentReader  from '@/components/player/DocumentReader';
 
-const TABS = [
-  { key: 'segments',   label: '📋 Segments' },
-  { key: 'bookmarks',  label: '🔖 Bookmarks' },
-  { key: 'podcast',    label: '📻 Podcast' },
-  { key: 'quiz',       label: '🎯 Quiz' },
-  { key: 'flashcards', label: '🃏 Flashcards' },
-  { key: 'mindmap',    label: '🗺️ Mind Map' },
-  { key: 'notes',      label: '📝 Notes' },
-];
-
-const CLASSROOM_TOUR_STEPS = [
-  {
-    target: 'classroom-player',
-    title: '📺 Video Player & Document Reader',
-    text: 'Watch video lectures or read documents here. The AI automatically syncs content with your notes and transcripts.'
-  },
-  {
-    target: 'study-tabs',
-    title: '🎯 AI Study Tools',
-    text: 'Unlock interactive features: take auto-generated Quizzes, study Flashcards, read structured Notes, view visual Mind Maps, and listen to AI Podcasts.'
-  },
-  {
-    target: 'raise-hand-btn',
-    title: '✋ Ask AI Expert',
-    text: "Stuck on a concept? Click 'Raise Hand' to ask questions, verify details, and talk directly with your dedicated AI learning assistant."
-  }
+// ── Studio tool definitions ──────────────────────────────────────────────────
+const STUDIO_TOOLS = [
+  { key: 'podcast',    icon: '🎧', label: 'Audio Overview',  color: '#2d4a3e' },
+  { key: 'slides',     icon: '📊', label: 'Slide Deck',      color: '#3a3020' },
+  { key: 'video',      icon: '🎬', label: 'Video Lecture',   color: '#2a2a3e' },
+  { key: 'mindmap',    icon: '🗺️', label: 'Mind Map',        color: '#3a2020' },
+  { key: 'quiz',       icon: '🎯', label: 'Quiz',            color: '#1e3040' },
+  { key: 'flashcards', icon: '🃏', label: 'Flashcards',      color: '#2e2040' },
+  { key: 'notes',      icon: '📝', label: 'Notes',           color: '#1e2e20' },
+  { key: 'smartboard', icon: '🖊️', label: 'Smart Board',    color: '#3a2030' },
 ];
 
 export default function PlayerPage() {
-  const router = useRouter();
-  const { id } = router.query;
+  const router   = useRouter();
+  const { id }   = router.query;
   const { user, loading: authLoading, updateXP, awardBadge, signOut } = useAuth();
 
-  const [video,      setVideo]     = useState(null);
-  const [segments,   setSegments]  = useState([]);
-  const [analyzing,  setAnalyzing] = useState(false);
-  const [loadingVid, setLoadingVid] = useState(true);
+  const [video,       setVideo]      = useState(null);
+  const [segments,    setSegments]   = useState([]);
+  const [analyzing,   setAnalyzing]  = useState(false);
+  const [loadingVid,  setLoadingVid] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
-  const [activeTab,   setActiveTab]   = useState('segments');
-  
-  const [showTour, setShowTour] = useState(false);
-  const [tourStep, setTourStep] = useState(0);
-  
-  // Right sidebar — starts CLOSED; only opens when user clicks "Raise Hand" or a sidebar button
-  // ✅ FIX: was useState(true) which caused RaiseHandPanel to mount immediately and call onPause()
-  const [rightSidebarMode, setRightSidebarMode] = useState('expert'); // 'expert' | 'friends'
-  const [showRightSidebar, setShowRightSidebar] = useState(false);
-  const [friendsMessages, setFriendsMessages] = useState([
-    { sender: 'Leo (AI Friend)', text: "I'm still stuck on how the repair template is introduced. Does the cell always use homology-directed repair?", isMe: false, avatar: 'L' },
-    { sender: 'You', text: "Only if a donor DNA template is present during the cut!", isMe: true, avatar: 'ER' }
-  ]);
-  const [friendsInput, setFriendsInput] = useState('');
-  const [friendsTyping, setFriendsTyping] = useState(true);
-  const friendsTypingTimerRef = useRef(null); // ✅ Cleanup ref to prevent state update on unmount
 
-  const [searchQuery, setSearchQuery] = useState('');
+  // ── Panel state ────────────────────────────────────────────────────────────
+  // centerMode: 'chat' | tool key (podcast, slides, quiz, flashcards, mindmap, notes, smartboard, video)
+  const [centerMode,      setCenterMode]      = useState('chat');
+  const [sourcesOpen,     setSourcesOpen]     = useState(true);
+  const [studioOpen,      setStudioOpen]      = useState(true);
+
+  // ── Chat ──────────────────────────────────────────────────────────────────
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput,    setChatInput]    = useState('');
+  const [chatLoading,  setChatLoading]  = useState(false);
+  const chatEndRef = useRef(null);
+
+  // ── Sources ───────────────────────────────────────────────────────────────
+  const [sources, setSources]             = useState([]);
+  const [addSourceOpen, setAddSourceOpen] = useState(false);
+  const [newSourceUrl,  setNewSourceUrl]  = useState('');
+  const [addingSource,  setAddingSource]  = useState(false);
+
+  // ── Player ────────────────────────────────────────────────────────────────
   const playerRef = useRef(null);
+  const [watchedSeconds,   setWatchedSeconds]   = useState(0);
+  const watchedSecondsRef  = useRef(0);
+  const lastTimeRef        = useRef(0);
+  const setCurrentTimeRef  = useRef(setCurrentTime);
+  setCurrentTimeRef.current = setCurrentTime;
 
   // Auth guard
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Dynamic sidebar sync from URL query params
-  useEffect(() => {
-    if (router.query.sidebar === 'expert' || router.query.sidebar === 'friends') {
-      setRightSidebarMode(router.query.sidebar);
-      setShowRightSidebar(true);
-    } else if (router.isReady && !router.query.sidebar) {
-      setShowRightSidebar(false);
-    }
-  }, [router.query.sidebar, router.isReady]);
-
-  // Load video — wrapped in useCallback so the dep array in useEffect is stable
+  // Load video
   const loadVideo = useCallback(async () => {
     setLoadingVid(true);
     const { data: vid } = await supabase.from('videos').select('*').eq('id', id).single();
     if (!vid) { router.replace('/dashboard'); return; }
     setVideo(vid);
 
+    // Seed sources list from DB
+    setSources([{ id: vid.id, title: vid.title || 'Main Source', type: 'video', url: vid.url }]);
+
     const { data: segs } = await supabase.from('segments').select('*').eq('video_id', id).order('start_time');
-    if (segs && segs.length > 0) {
+    if (segs?.length) {
       setSegments(segs.map(s => ({ ...s, start: s.start_time, end: s.end_time })));
       setLoadingVid(false);
     } else {
       setLoadingVid(false);
-      if (vid.title === 'Analyzing…' || !segs?.length) analyzeVideo(vid);
+      analyzeVideo(vid);
     }
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load video
-  useEffect(() => {
-    if (id && user) loadVideo();
-  }, [id, user, loadVideo]);
+  useEffect(() => { if (id && user) loadVideo(); }, [id, user, loadVideo]);
 
-  // Auto show tour for new visitors to the classroom
-  useEffect(() => {
-    if (user && video) {
-      const visited = localStorage.getItem('is_new_classroom_tour');
-      if (!visited) {
-        setShowTour(true);
-        setTourStep(0);
-      }
-    }
-  }, [user, video]);
+  // Scroll chat to bottom on new messages
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
-  // Simulated AI-friend typing indicator with proper cleanup
-  useEffect(() => {
-    if (friendsTyping) {
-      friendsTypingTimerRef.current = setTimeout(() => setFriendsTyping(false), 4000);
-      return () => {
-        if (friendsTypingTimerRef.current) clearTimeout(friendsTypingTimerRef.current);
-      };
-    }
-  }, [friendsTyping]);
-
-  // Cleanup on unmount: cancel speech and pending timers
-  useEffect(() => {
-    return () => {
-      if (friendsTypingTimerRef.current) clearTimeout(friendsTypingTimerRef.current);
-      if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
-    };
-  }, []);
-
-  // Cancel speech synthesis if user switches tabs
-  useEffect(() => {
-    if (activeTab !== 'podcast') {
-      if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
-    }
-  }, [activeTab]);
-
+  // ── Analyse video ─────────────────────────────────────────────────────────
   async function analyzeVideo(vid) {
     setAnalyzing(true);
     try {
@@ -158,538 +107,441 @@ export default function PlayerPage() {
         body: JSON.stringify({ url: vid.url, platform: platform?.platform, videoId: platform?.videoId }),
       });
       const data = await res.json();
-      if (!data.analysis) throw new Error('No analysis returned');
-
+      if (!data.analysis) throw new Error('No analysis');
       const { title, subject, expertRole, duration, segments: segs } = data.analysis;
-
       const { data: updatedVid } = await supabase.from('videos')
         .update({ title, subject, expert_role: expertRole, duration })
         .eq('id', id).select().single();
       setVideo(updatedVid || { ...vid, title, subject, expert_role: expertRole, duration });
-
       if (segs?.length) {
-        const rows = segs.map(s => ({
-          video_id: id, start_time: s.start, end_time: s.end, title: s.title, topics: s.topics || [],
-        }));
+        const rows = segs.map(s => ({ video_id: id, start_time: s.start, end_time: s.end, title: s.title, topics: s.topics || [] }));
         const { data: inserted } = await supabase.from('segments').insert(rows).select();
         setSegments((inserted || []).map(s => ({ ...s, start: s.start_time, end: s.end_time })));
       }
-
       await awardBadge('first_watch');
       await updateXP(50);
-    } catch (err) {
-      console.error('Analysis failed:', err);
-    } finally {
-      setAnalyzing(false);
-    }
+    } catch (err) { console.error('Analysis failed:', err); }
+    finally { setAnalyzing(false); }
   }
 
-  // ── Time tracking ──────────────────────────────────────────────────────────
-  // watchedSeconds = time the user has ACTUALLY watched (skipping doesn't count)
-  // currentTime    = current playback position in the video (used for UI position)
-  const [watchedSeconds, setWatchedSeconds] = useState(0);
-  const watchedSecondsRef = useRef(0);  // mutable accumulator (no re-render per tick)
-  const lastTimeRef       = useRef(0);  // previous tick value to detect seeks
-
-  // ✅ Stable ref-based time update — never creates a new function reference so YouTube player
-  //    effect doesn't re-run and no stale closures occur.
-  //    Distinguishes natural playback (small diff ≤ 2 s) from user seeks (large diff).
-  const setCurrentTimeRef = useRef(setCurrentTime);
-  setCurrentTimeRef.current = setCurrentTime;
-
+  // ── Time tracking ─────────────────────────────────────────────────────────
   const handleTimeUpdate = useCallback((t) => {
-    const prev = lastTimeRef.current;
-    const diff = t - prev;
-
-    // Natural playback: our interval fires every 1 s, so diff should be ~1 s.
-    // Allow up to 2 s to account for buffering or a slow timer tick.
-    // Negative diff = rewind / seek backwards → also ignore.
+    const diff = t - lastTimeRef.current;
     if (diff > 0 && diff <= 2) {
       watchedSecondsRef.current += diff;
-      // Update state at whole-second boundaries to avoid flooding React
       setWatchedSeconds(Math.floor(watchedSecondsRef.current));
     }
-    // Large positive diff (>2 s) = user seeked forward → do NOT add to watch time.
-
     lastTimeRef.current = t;
     setCurrentTimeRef.current(t);
   }, []);
 
-  const handleSeek = useCallback((s) => {
-    setCurrentTime(s);
-    if (playerRef.current?.seekTo) {
-      playerRef.current.seekTo(s);
-    }
-  }, []);
-  const handlePause = useCallback(() => playerRef.current?.pause(), []);
+  const handleSeek  = useCallback((s) => { setCurrentTime(s); playerRef.current?.seekTo?.(s); }, []);
+  const handlePause = useCallback(() => playerRef.current?.pause?.(), []);
   const handlePlay  = useCallback(() => playerRef.current?.play?.(), []);
 
-  const handleSendFriendsMessage = (e) => {
-    e.preventDefault();
-    if (!friendsInput.trim()) return;
-    
-    const newMsg = { sender: 'You', text: friendsInput.trim(), isMe: true, avatar: 'ER' };
-    setFriendsMessages(prev => [...prev, newMsg]);
-    setFriendsInput('');
-    setFriendsTyping(true);
-    
-    // Simulate classroom feedback
-    setTimeout(() => {
-      setFriendsMessages(prev => [...prev, {
-        sender: 'Leo (AI Friend)',
-        text: "Ah makes sense! So HDR is like a find-and-replace command, while NHEJ is just pasting the broken ends back.",
-        isMe: false,
-        avatar: 'L'
-      }]);
-      setFriendsTyping(false);
-    }, 2500);
-  };
+  // ── Chat send ─────────────────────────────────────────────────────────────
+  async function handleSendChat(e) {
+    e?.preventDefault();
+    if (!chatInput.trim() || chatLoading) return;
+    const userMsg = { role: 'user', text: chatInput.trim() };
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const res = await fetch('/api/tutor-chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMsg.text,
+          videoTitle: video?.title,
+          subject: video?.subject,
+          segments,
+          currentTime,
+        }),
+      });
+      const data = await res.json();
+      setChatMessages(prev => [...prev, { role: 'assistant', text: data.reply || data.message || '...' }]);
+    } catch { setChatMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, something went wrong.' }]); }
+    finally { setChatLoading(false); }
+  }
 
-  const filteredSegments = searchQuery.trim()
-    ? segments.filter(s =>
-        s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (s.topics || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : segments;
+  // ── Add source ────────────────────────────────────────────────────────────
+  async function handleAddSource(e) {
+    e?.preventDefault();
+    if (!newSourceUrl.trim()) return;
+    setAddingSource(true);
+    const newSrc = { id: Date.now(), title: newSourceUrl.trim(), type: 'url', url: newSourceUrl.trim() };
+    setSources(prev => [...prev, newSrc]);
+    setNewSourceUrl('');
+    setAddingSource(false);
+    setAddSourceOpen(false);
+  }
+
+  // ── Studio tool click ─────────────────────────────────────────────────────
+  function handleStudioTool(key) {
+    if (key === 'video') {
+      // Switch center panel to video player directly
+      setCenterMode('video');
+    } else if (key === 'smartboard') {
+      router.push('/smart-board');
+    } else {
+      setCenterMode(key);
+    }
+  }
 
   if (authLoading || loadingVid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0d0d1a]">
-        <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1A1A1A' }}>
+        <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );
   }
   if (!video) return null;
 
   const platform = detectPlatform(video.url);
-  const activeSegment = segments.find(s => currentTime >= s.start && currentTime < s.end);
 
+
+  // ── JSX ───────────────────────────────────────────────────────────────────
   return (
     <>
-      <Head>
-        <title>{video.title} — Video Classroom</title>
-      </Head>
+      <Head><title>{video.title} — EduSpark</title></Head>
 
-      <div className="min-h-screen flex text-text-primary bg-[#0d0d1a]">
-        
-        {/* Left Sidebar */}
-        <aside className="hidden lg:flex flex-col h-screen sticky top-0 left-0 w-[280px] py-6 px-4 border-r border-white/5 bg-surface1/60 backdrop-blur-2xl z-40 shrink-0">
-          <div className="mb-8 px-2">
-            <div className="flex items-center gap-3 p-3 glass rounded-2xl">
-              <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center text-xl text-purple">
-                🤖
-              </div>
-              <div>
-                <p className="text-xs font-bold text-text-primary leading-tight font-display">AI Learning Hub</p>
-                <p className="text-[9px] uppercase tracking-widest text-green font-bold mt-0.5 animate-pulse">Voice Active</p>
-              </div>
-            </div>
+      {/* ── Root shell: full-height, no scroll on outer container ── */}
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#1A1A1A', color: '#E3E3E3', fontFamily: 'Google Sans, sans-serif', overflow: 'hidden' }}>
+
+        {/* ── Top AppBar ── */}
+        <header style={{ height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', background: '#1E1E1E', flexShrink: 0, zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Logo */}
+            <Link href="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 20 }}>📚</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#E3E3E3' }}>EduSpark</span>
+            </Link>
+            <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: 18 }}>›</span>
+            <span style={{ fontSize: 14, color: '#9AA0A6', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {video.title}
+            </span>
           </div>
-          <nav className="flex-1 space-y-1">
-            <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname === '/dashboard' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">home</span>
-              <span className="text-xs">Dashboard</span>
-            </Link>
-            <Link href={`/player/${id}`} onClick={(e) => { e.preventDefault(); setShowRightSidebar(false); router.push(`/player/${id}`, undefined, { shallow: true }); }} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname.startsWith('/player') && !showRightSidebar ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">school</span>
-              <span className="text-xs">Classroom</span>
-            </Link>
-            <Link href={`/player/${id}?sidebar=expert`} onClick={(e) => { e.preventDefault(); setRightSidebarMode('expert'); setShowRightSidebar(true); router.push(`/player/${id}?sidebar=expert`, undefined, { shallow: true }); }} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname.startsWith('/player') && showRightSidebar && rightSidebarMode === 'expert' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">smart_toy</span>
-              <span className="text-xs">AI Expert</span>
-            </Link>
-            <Link href={`/player/${id}?sidebar=friends`} onClick={(e) => { e.preventDefault(); setRightSidebarMode('friends'); setShowRightSidebar(true); router.push(`/player/${id}?sidebar=friends`, undefined, { shallow: true }); }} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname.startsWith('/player') && showRightSidebar && rightSidebarMode === 'friends' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">forum</span>
-              <span className="text-xs">AI Friends</span>
-            </Link>
-            <Link href="/smart-board" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname === '/smart-board' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">developer_board</span>
-              <span className="text-xs">Smart Board</span>
-            </Link>
-            <Link href="/community" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname === '/community' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">groups</span>
-              <span className="text-xs">Community</span>
-            </Link>
-            <Link href="/profile" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${router.pathname === '/profile' ? 'text-purple font-semibold bg-purple/10 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-              <span className="material-symbols-outlined text-sm">person</span>
-              <span className="text-xs">Profile</span>
-            </Link>
-          </nav>
-          <div className="mt-auto space-y-1 border-t border-white/5 pt-4">
-            <button
-              id="raise-hand-btn"
-              title="Ask your teacher a live question"
-              onClick={() => {
-                handlePause();
-                setRightSidebarMode('expert');
-                setShowRightSidebar(true);
-                router.push(`/player/${id}?sidebar=expert`, undefined, { shallow: true });
-              }}
-              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'raise-hand-btn' ? 'ring-4 ring-purple glow-purple z-50 relative' : ''}`}
-            >
-              ✋ Raise Hand
-            </button>
-            <button onClick={signOut} className="w-full flex items-center gap-3 p-3 rounded-xl text-text-muted hover:text-red-400 transition-colors text-left">
-              <span className="material-symbols-outlined text-sm">logout</span>
-              <span className="text-xs">Sign Out</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={() => router.push('/dashboard')} style={headerBtn}>+ New session</button>
+            <button style={headerIconBtn} title="Share">⬆</button>
+            <button style={headerIconBtn} title="Settings">⚙</button>
+            <button onClick={signOut} style={{ ...headerIconBtn, background: 'rgba(168,199,250,0.1)', color: '#A8C7FA', borderRadius: '50%', width: 32, height: 32, fontSize: 13, fontWeight: 700 }}>
+              {user?.email?.[0]?.toUpperCase() || 'U'}
             </button>
           </div>
-        </aside>
+        </header>
 
-        {/* Classroom Center Main Frame */}
-        <main className="flex-1 flex flex-col h-screen overflow-hidden" style={{ minWidth: 0 }}>
-          {/* Top AppBar */}
-          <header className="sticky top-0 z-30 bg-[#0d0d1a]/80 backdrop-blur-xl border-b border-white/5 h-16 flex justify-between items-center px-6 md:px-10 shrink-0">
-            <div className="flex items-center gap-4 flex-1">
-              <Link href="/dashboard" className="flex items-center gap-1.5 lg:hidden btn-secondary py-1.5 px-3 rounded-xl text-xs font-bold" title="Back to Dashboard">
-                <span className="material-symbols-outlined text-sm">arrow_back</span>
-                <span className="hidden sm:inline">Dashboard</span>
-              </Link>
-              <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-85">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg,#7c3aed,#3b82f6)' }}>
-                  🎓
-                </div>
-                <span className="text-lg font-bold font-display grad-text">EduSpark AI</span>
-              </Link>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => { setShowTour(true); setTourStep(0); }}
-                className="p-2 rounded-full hover:bg-purple/10 text-text-muted hover:text-purple transition-colors relative mr-1"
-                title="Help Onboarding Tour"
-              >
-                <span className="material-symbols-outlined text-sm">help_outline</span>
-              </button>
-              <Link href="/dashboard" className="btn-secondary py-1.5 px-4 rounded-xl text-xs font-bold">
-                Dashboard
-              </Link>
-            </div>
-          </header>
+        {/* ── 3-Panel Body ── */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* Scrollable Layout grid */}
-          <div className="flex-1 flex overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
-              
-              <div className={`transition-all duration-300 ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'classroom-player' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-1' : ''}`}>
-                {['pdf', 'document', 'website'].includes(video.platform) ? (
-                  <DocumentReader
-                    video={video}
-                    segments={segments}
-                    currentTime={currentTime}
-                    onSeek={handleSeek}
-                  />
-                ) : (
-                  <>
-                    {/* Main Player Component */}
-                    <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black border border-white/5">
-                      {platform?.platform === 'youtube' ? (
-                        <YouTubePlayer
-                          ref={playerRef}
-                          videoId={platform.videoId}
-                          onTimeUpdate={handleTimeUpdate}
-                        />
-                      ) : (
-                        <HTML5Player
-                          ref={playerRef}
-                          url={video.url}
-                          onTimeUpdate={handleTimeUpdate}
-                        />
-                      )}
+          {/* ════════════════════════════════════════════════════════════════
+              LEFT PANEL — Sources
+          ═══════════════════════════════════════════════════════════════════ */}
+          {sourcesOpen && (
+            <aside style={{ width: 300, borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', background: '#1E1E1E', flexShrink: 0, overflow: 'hidden' }}>
 
-                      {/* Analyzing overlay — shown while AI processes a new video */}
-                      {analyzing && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-20"
-                          style={{ background: 'rgba(13,13,26,0.85)', backdropFilter: 'blur(8px)' }}
-                        >
-                          <div className="spinner" style={{ width: 48, height: 48 }} />
-                          <div className="text-center space-y-1">
-                            <p className="font-bold text-text-primary text-sm">Analyzing video with AI…</p>
-                            <p className="text-xs text-text-muted">Extracting topics, segments &amp; generating study materials</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+              {/* Panel header */}
+              <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#E3E3E3' }}>Sources</span>
+                <button onClick={() => setSourcesOpen(false)} style={panelIconBtn}>⬛</button>
+              </div>
 
-                    {/* Segment Timeline Blocks */}
-                    <SegmentTimeline
-                      segments={segments}
-                      currentTime={currentTime}
-                      watchedSeconds={watchedSeconds}
-                      duration={video.duration}
-                      onSeek={handleSeek}
+              {/* Add sources button */}
+              <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <button onClick={() => setAddSourceOpen(v => !v)} style={{ width: '100%', padding: '8px 12px', border: '1px dashed rgba(255,255,255,0.18)', borderRadius: 8, background: 'transparent', color: '#A8C7FA', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  + Add sources
+                </button>
+                {addSourceOpen && (
+                  <form onSubmit={handleAddSource} style={{ marginTop: 8, display: 'flex', gap: 6 }}>
+                    <input
+                      value={newSourceUrl}
+                      onChange={e => setNewSourceUrl(e.target.value)}
+                      placeholder="Paste URL or YouTube link…"
+                      style={{ flex: 1, padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: '#2A2A2A', color: '#E3E3E3', fontSize: 12, outline: 'none' }}
                     />
-                  </>
+                    <button type="submit" disabled={addingSource} style={{ padding: '6px 10px', borderRadius: 6, background: '#004A77', color: '#C2E7FF', border: 'none', fontSize: 12, cursor: 'pointer' }}>
+                      {addingSource ? '…' : 'Add'}
+                    </button>
+                  </form>
                 )}
               </div>
 
-              {/* Subject Title & Metadata details */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-4">
-                <div>
-                  <h1 className="text-xl font-black text-text-primary leading-tight font-display">{video.title}</h1>
-                  <p className="text-xs text-text-muted mt-1 font-medium">
-                    {video.subject || 'General'} · Taught by AI Expert {video.expert_role || 'Specialist'}
-                  </p>
-                </div>
+              {/* Search sources */}
+              <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <input placeholder="Search the web for new sources" style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: '#2A2A2A', color: '#9AA0A6', fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
               </div>
 
-              {/* Floating expert insight + next up card grids */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Expert Insight Card */}
-                <div className="glass p-5 rounded-2xl border border-purple/35 relative overflow-hidden flex flex-col justify-between min-h-[160px]">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple/10 rounded-full blur-2xl" />
-                  <div className="space-y-2 relative z-10 text-xs">
-                    <span className="badge badge-purple uppercase font-bold text-[8px] tracking-wider">Expert Insight</span>
-                    <p className="text-text-primary italic leading-relaxed">
-                      "The Cas9 protein acts as molecular scissors. It finds the 20-nucleotide sequence that matches the guide RNA (gRNA), binds, and creates double-strand cuts. Let's inspect the target cut sequence."
-                    </p>
+              {/* Sources list */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+                {sources.map((src) => (
+                  <div key={src.id} onClick={() => setCenterMode('video')} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', cursor: 'pointer', borderRadius: 6, margin: '0 6px', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>
+                      {src.type === 'video' ? '▶' : '🔗'}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#C4C7CB', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{src.title}</span>
+                    <span style={{ fontSize: 11, color: '#5F6368' }}>✓</span>
                   </div>
-                  <div className="flex gap-2 mt-4 relative z-10">
-                    <button onClick={() => alert("Launching 3D Chloroplast Molecule visualizer...")} className="btn-primary py-2 px-3 text-[10px] rounded-xl font-bold">
-                      Yes, Visualize
-                    </button>
-                    <button onClick={() => alert("Spelling out gRNA mechanisms...")} className="btn-secondary py-2 px-3 text-[10px] rounded-xl font-bold">
-                      Explain gRNA
-                    </button>
-                  </div>
-                </div>
+                ))}
 
-                {/* Next Up Card */}
-                <div className="glass p-5 rounded-2xl border border-white/5 flex gap-4 items-start min-h-[160px]">
-                  <div className="w-24 h-20 rounded-xl overflow-hidden bg-surface2 shrink-0 border border-white/10">
-                    <img
-                      src="https://images.unsplash.com/photo-1532187643603-ba119ca4109e?w=200"
-                      alt="Next up preview"
-                      className="w-full h-full object-cover"
-                    />
+                {/* Segments as sub-sources */}
+                {segments.slice(0, 6).map((seg, i) => (
+                  <div key={seg.id || i} onClick={() => { handleSeek(seg.start); setCenterMode('video'); }} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px 6px 30px', cursor: 'pointer', margin: '0 6px', borderRadius: 6, transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontSize: 11, color: '#9AA0A6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{seg.title}</span>
+                    <span style={{ fontSize: 10, color: '#5F6368', fontFamily: 'monospace' }}>{formatTime(seg.start)}</span>
                   </div>
-                  <div className="space-y-2">
-                    <span className="badge badge-blue text-[8px] uppercase font-bold tracking-wider">Next Up</span>
-                    <h4 className="font-bold text-xs text-text-primary leading-snug line-clamp-2">
-                      Ethical Genetic Modifications & Global Regulation Codes
-                    </h4>
-                    <p className="text-[10px] text-text-muted">Module 5 · 42 mins</p>
-                  </div>
-                </div>
+                ))}
               </div>
+            </aside>
+          )}
 
-              {/* Study Tabs components */}
-              <div className={`space-y-4 pt-4 border-t border-white/5 transition-all duration-300 ${showTour && CLASSROOM_TOUR_STEPS[tourStep].target === 'study-tabs' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-[20px] bg-[#0d0d1a] p-3' : ''}`}>
-                <div className="flex gap-1 overflow-x-auto pb-2 border-b border-white/5">
-                  {TABS.map(tab => (
-                    <button
-                      key={tab.key}
-                      onClick={() => setActiveTab(tab.key)}
-                      className={`text-xs px-4 py-2 font-bold rounded-lg transition-all shrink-0 ${activeTab === tab.key ? 'bg-purple/20 text-[#c4b5fd]' : 'text-text-muted hover:text-text-primary'}`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
+          {/* Panel re-open tabs when closed */}
+          {!sourcesOpen && (
+            <button onClick={() => setSourcesOpen(true)} style={{ width: 32, background: '#1E1E1E', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9AA0A6', cursor: 'pointer', border: 'none', flexShrink: 0 }}>
+              ›
+            </button>
+          )}
 
-                <div className="bg-surface2/10 rounded-2xl border border-white/5 min-h-[200px]">
-                  {activeTab === 'segments' && (
-                    <div className="p-4 space-y-4">
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-xs">search</span>
-                        <input
-                          value={searchQuery}
-                          onChange={e => setSearchQuery(e.target.value)}
-                          className="w-full h-9 pl-9 pr-4 rounded-xl border border-white/10 bg-surface1/60 text-xs focus:border-purple/50 outline-none text-text-primary placeholder-text-muted"
-                          placeholder="Search segments and topics..."
-                        />
-                      </div>
-                      
-                      <div className="flex flex-col gap-2">
-                        {filteredSegments.map((seg, i) => {
-                          const isActive = currentTime >= seg.start && currentTime < seg.end;
-                          return (
-                            <button
-                              key={seg.id || i}
-                              onClick={() => handleSeek(seg.start)}
-                              className="w-full text-left p-3 rounded-xl border transition-all"
-                              style={{
-                                background: isActive ? 'rgba(124,58,237,0.12)' : 'transparent',
-                                borderColor: isActive ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)'
-                              }}
-                            >
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs font-bold text-text-primary leading-tight">{seg.title}</span>
-                                <span className="text-[10px] text-text-muted font-mono font-bold">{formatTime(seg.start)}</span>
-                              </div>
-                              {seg.topics?.length > 0 && (
-                                <div className="flex gap-1 flex-wrap">
-                                  {seg.topics.map(t => (
-                                    <span key={t} className="badge badge-purple text-[8px]">{t}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
 
-                  {activeTab === 'bookmarks' && (
-                    <BookmarksPanel videoId={id} currentTime={currentTime} onSeek={handleSeek} />
-                  )}
+          {/* ════════════════════════════════════════════════════════════════
+              CENTER PANEL — Chat / Active Tool
+          ═══════════════════════════════════════════════════════════════════ */}
+          <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1A1A1A', minWidth: 0 }}>
 
-                  {activeTab === 'podcast' && (
-                    <PodcastPanel video={video} segments={segments} />
-                  )}
-
-                  {activeTab === 'quiz' && (
-                    <QuizPanel video={video} segments={segments} videoId={id} onXP={updateXP} />
-                  )}
-
-                  {activeTab === 'flashcards' && (
-                    <FlashcardDeck video={video} segments={segments} />
-                  )}
-
-                  {activeTab === 'mindmap' && (
-                    <MindMapPanel video={video} segments={segments} />
-                  )}
-
-                  {activeTab === 'notes' && (
-                    <NotesPanel videoId={id} videoTitle={video.title} />
-                  )}
-                </div>
+            {/* Center toolbar */}
+            <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, background: '#1E1E1E' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: centerMode === 'chat' ? '#E3E3E3' : '#A8C7FA' }}>
+                  {centerMode === 'chat' ? 'Chat' : STUDIO_TOOLS.find(t => t.key === centerMode)?.label || centerMode}
+                </span>
+                {centerMode !== 'chat' && (
+                  <button onClick={() => setCenterMode('chat')} style={{ marginLeft: 8, fontSize: 11, color: '#9AA0A6', background: 'none', border: 'none', cursor: 'pointer' }}>← Back to Chat</button>
+                )}
               </div>
-
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button style={panelIconBtn} title="Customize">⊞</button>
+                <button style={panelIconBtn} title="More options">⋮</button>
+              </div>
             </div>
 
-            {/* Right Column Side Panel: Tutor Chat or Friends Class discussion */}
-            {showRightSidebar && (
-              <div className="w-[360px] border-l border-white/5 bg-[#0d0d1a] flex flex-col h-full shrink-0 z-30">
-                {rightSidebarMode === 'expert' ? (
-                  <RaiseHandPanel
-                    video={video}
-                    segments={segments}
-                    currentTime={currentTime}
-                    onClose={() => setShowRightSidebar(false)}
-                    onPause={handlePause}
-                  />
-                ) : (
-                  // Class Discussion panel matching Image 2 mockup
-                  <div className="flex flex-col h-full justify-between">
-                    {/* Header */}
-                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/30 flex items-center justify-center text-xl text-purple">
-                          👥
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-sm text-text-primary">Class Discussion</h3>
-                          <span className="text-[10px] text-text-muted font-medium">3 AI Friends active</span>
-                        </div>
-                      </div>
-                      <button onClick={() => setShowRightSidebar(false)} className="p-1 text-text-muted hover:text-text-primary rounded-lg transition-colors">
-                        ✕
-                      </button>
-                    </div>
+            {/* ── CHAT MODE ── */}
+            {centerMode === 'chat' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-                    {/* Messages Body */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col justify-end" style={{ minHeight: 0 }}>
-                      <div className="space-y-4">
-                        {friendsMessages.map((m, idx) => (
-                          <div key={idx} className={`flex flex-col gap-1 ${m.isMe ? 'items-end' : 'items-start'}`}>
-                            <span className="text-[10px] text-text-muted font-semibold px-1">{m.sender}</span>
-                            <div className={m.isMe ? 'chat-bubble-user animate-slide-up' : 'chat-bubble-ai animate-slide-up'}>
-                              {m.text}
-                            </div>
-                          </div>
+                {/* Welcome / summary area */}
+                <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
+                  {chatMessages.length === 0 && (
+                    <div style={{ marginBottom: 32 }}>
+                      <div style={{ width: 52, height: 52, borderRadius: 12, background: 'rgba(168,199,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, marginBottom: 16 }}>📚</div>
+                      <h2 style={{ fontSize: 22, fontWeight: 700, color: '#E3E3E3', margin: '0 0 6px' }}>{video.title}</h2>
+                      <p style={{ fontSize: 13, color: '#9AA0A6', margin: '0 0 20px' }}>{segments.length} segments · {video.subject || 'General'}</p>
+                      <div style={{ fontSize: 14, color: '#C4C7CB', lineHeight: 1.7, maxWidth: 680 }}>
+                        <p>Welcome to your EduSpark session! Your sources have been analyzed and are ready. You can:</p>
+                        <ul style={{ paddingLeft: 20, marginTop: 8, color: '#9AA0A6' }}>
+                          <li>Ask any question about the content in the chat below</li>
+                          <li>Use the <strong style={{ color: '#A8C7FA' }}>Studio panel →</strong> to generate podcasts, quizzes, slides, and more</li>
+                          <li>Click any segment in the Sources panel to jump directly to that part of the video</li>
+                        </ul>
+                      </div>
+
+                      {/* Quick suggestion chips */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 24 }}>
+                        {['Summarize key concepts', 'Generate a quiz', 'What are the main topics?', 'Create flashcards'].map(q => (
+                          <button key={q} onClick={() => { setChatInput(q); }} style={{ padding: '7px 14px', borderRadius: 20, border: '1px solid rgba(168,199,250,0.25)', background: 'rgba(168,199,250,0.08)', color: '#A8C7FA', fontSize: 12, cursor: 'pointer' }}>
+                            {q}
+                          </button>
                         ))}
-
-                        {friendsTyping && (
-                          <div className="flex flex-col gap-1 items-start">
-                            <span className="text-[10px] text-purple font-mono font-bold px-1 animate-pulse">Leo is typing...</span>
-                            <div className="chat-bubble-ai py-3 px-4 flex items-center gap-1.5 bg-surface2/40">
-                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0.15s' }} />
-                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
+                  )}
 
-                    {/* Chat Form */}
-                    <form onSubmit={handleSendFriendsMessage} className="p-4 border-t border-white/5 bg-surface2/50 flex gap-2">
-                      <input
-                        value={friendsInput}
-                        onChange={e => setFriendsInput(e.target.value)}
-                        placeholder="Discuss concepts with classmates..."
-                        className="input flex-1 text-sm bg-surface1/70"
-                      />
-                      <button type="submit" className="btn-primary p-2 w-10 h-10 rounded-xl flex items-center justify-center shrink-0">
-                        <span>🚀</span>
-                      </button>
-                    </form>
+                  {/* Chat messages */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {chatMessages.map((m, i) => (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', gap: 4 }}>
+                        <div style={{
+                          maxWidth: '80%', padding: '10px 16px', borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                          background: m.role === 'user' ? '#004A77' : '#242424',
+                          color: m.role === 'user' ? '#C2E7FF' : '#E3E3E3',
+                          fontSize: 14, lineHeight: 1.6,
+                          border: m.role === 'assistant' ? '1px solid rgba(255,255,255,0.08)' : 'none'
+                        }}>
+                          {m.text}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center', padding: '10px 0' }}>
+                        {[0, 0.15, 0.3].map((d, i) => (
+                          <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#9AA0A6', display: 'inline-block', animation: 'bounce 1s infinite', animationDelay: `${d}s` }} />
+                        ))}
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
                   </div>
+                </div>
+
+                {/* Chat input */}
+                <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', background: '#1E1E1E', flexShrink: 0 }}>
+                  <form onSubmit={handleSendChat} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#2A2A2A', borderRadius: 24, padding: '10px 16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      placeholder="Ask a question or create something"
+                      style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E3E3E3', fontSize: 14 }}
+                    />
+                    <span style={{ fontSize: 12, color: '#5F6368', marginRight: 4 }}>{segments.length} sources</span>
+                    <button type="submit" disabled={chatLoading || !chatInput.trim()} style={{ width: 32, height: 32, borderRadius: '50%', background: chatInput.trim() ? '#004A77' : 'rgba(255,255,255,0.08)', border: 'none', color: chatInput.trim() ? '#C2E7FF' : '#5F6368', cursor: chatInput.trim() ? 'pointer' : 'default', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      →
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {/* ── VIDEO MODE ── */}
+            {centerMode === 'video' && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+                {['pdf', 'document', 'website'].includes(video.platform) ? (
+                  <DocumentReader video={video} segments={segments} currentTime={currentTime} onSeek={handleSeek} />
+                ) : (
+                  <>
+                    <div style={{ position: 'relative', aspectRatio: '16/9', borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      {platform?.platform === 'youtube' ? (
+                        <YouTubePlayer ref={playerRef} videoId={platform.videoId} onTimeUpdate={handleTimeUpdate} />
+                      ) : (
+                        <HTML5Player ref={playerRef} url={video.url} onTimeUpdate={handleTimeUpdate} />
+                      )}
+                      {analyzing && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'rgba(26,26,26,0.9)', backdropFilter: 'blur(8px)' }}>
+                          <div className="spinner" style={{ width: 40, height: 40 }} />
+                          <p style={{ fontSize: 13, color: '#9AA0A6' }}>Analyzing with AI…</p>
+                        </div>
+                      )}
+                    </div>
+                    <SegmentTimeline segments={segments} currentTime={currentTime} watchedSeconds={watchedSeconds} duration={video.duration} onSeek={handleSeek} />
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, color: '#E3E3E3', margin: '0 0 4px' }}>{video.title}</h2>
+                      <p style={{ fontSize: 12, color: '#9AA0A6' }}>{video.subject} · {video.expert_role}</p>
+                    </div>
+                  </>
                 )}
               </div>
             )}
 
-          </div>
-
-          {/* New User Tour Overlay */}
-          {showTour && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300" onClick={() => { setShowTour(false); localStorage.setItem('is_new_classroom_tour', 'true'); }} />
-          )}
-
-          {/* New User Tour Dialog Card */}
-          {showTour && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-              <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
-                <button 
-                  onClick={() => { setShowTour(false); localStorage.setItem('is_new_classroom_tour', 'true'); }} 
-                  className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
-                >
-                  ✕
-                </button>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
-                    🚀
-                  </div>
-                  <div>
-                    <h3 className="font-display font-bold text-sm text-text-primary">{CLASSROOM_TOUR_STEPS[tourStep].title}</h3>
-                    <span className="text-[10px] text-text-muted font-medium">Classroom Tour · Step {tourStep + 1} of {CLASSROOM_TOUR_STEPS.length}</span>
-                  </div>
-                </div>
-                <p className="text-xs leading-relaxed text-text-muted">
-                  {CLASSROOM_TOUR_STEPS[tourStep].text}
-                </p>
-                <div className="flex justify-between items-center gap-2 pt-2">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (tourStep > 0) setTourStep(tourStep - 1);
-                    }} 
-                    disabled={tourStep === 0}
-                    className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
-                  >
-                    Back
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      if (tourStep < CLASSROOM_TOUR_STEPS.length - 1) {
-                        setTourStep(tourStep + 1);
-                      } else {
-                        setShowTour(false);
-                        localStorage.setItem('is_new_classroom_tour', 'true');
-                      }
-                    }} 
-                    className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
-                  >
-                    {tourStep === CLASSROOM_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
-                  </button>
+            {/* ── TOOL MODES: Quiz, Flashcards, Mindmap, Notes, Podcast ── */}
+            {centerMode === 'quiz'       && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><QuizPanel video={video} segments={segments} videoId={id} onXP={updateXP} /></div>}
+            {centerMode === 'flashcards' && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><FlashcardDeck video={video} segments={segments} /></div>}
+            {centerMode === 'mindmap'    && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><MindMapPanel video={video} segments={segments} /></div>}
+            {centerMode === 'notes'      && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><NotesPanel videoId={id} videoTitle={video.title} /></div>}
+            {centerMode === 'podcast'    && <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}><PodcastPanel video={video} segments={segments} /></div>}
+            {centerMode === 'slides'     && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: '100%', maxWidth: 680, background: '#242424', borderRadius: 12, padding: 32, border: '1px solid rgba(255,255,255,0.08)', textAlign: 'center' }}>
+                  <span style={{ fontSize: 32 }}>📊</span>
+                  <h3 style={{ color: '#E3E3E3', margin: '12px 0 8px', fontSize: 18, fontWeight: 700 }}>Slide Deck</h3>
+                  <p style={{ color: '#9AA0A6', fontSize: 13, marginBottom: 20 }}>Auto-generate presentation slides from your video content</p>
+                  <button onClick={() => alert('Generating slides…')} style={{ padding: '10px 24px', borderRadius: 8, background: '#004A77', color: '#C2E7FF', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}>Generate Slides</button>
                 </div>
               </div>
+            )}
+          </main>
+
+
+          {/* ── RIGHT PANEL: Studio ── */}
+          <aside style={{
+            width: 280, minWidth: 240, maxWidth: 320,
+            background: '#1D1D1D', borderLeft: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex', flexDirection: 'column', overflowY: 'auto',
+          }}>
+            {/* Studio header */}
+            <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#E3E3E3' }}>Studio</span>
+              <button onClick={() => setStudioOpen(false)} style={{ background: 'none', border: 'none', color: '#9AA0A6', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>⊟</button>
             </div>
-          )}
-        </main>
-      </div>
+
+            {/* Studio tool grid */}
+            <div style={{ padding: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {[
+                { icon: '🎙️', label: 'Audio Overview', mode: 'podcast' },
+                { icon: '📊', label: 'Slide Deck',     mode: 'slides' },
+                { icon: '🎬', label: 'Video Player',   mode: 'video' },
+                { icon: '🧠', label: 'Mind Map',       mode: 'mindmap' },
+                { icon: '📋', label: 'Quiz',           mode: 'quiz' },
+                { icon: '🃏', label: 'Flashcards',     mode: 'flashcards' },
+                { icon: '📝', label: 'Notes',          mode: 'notes' },
+                { icon: '🖊️', label: 'Smart Board',   mode: 'smartboard' },
+              ].map(({ icon, label, mode }) => (
+                <button
+                  key={mode}
+                  onClick={() => setCenterMode(mode)}
+                  style={{
+                    background: centerMode === mode ? 'rgba(168,199,250,0.15)' : '#242424',
+                    border: centerMode === mode ? '1px solid rgba(168,199,250,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 10, padding: '12px 8px', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <span style={{ fontSize: 22 }}>{icon}</span>
+                  <span style={{ fontSize: 11, color: centerMode === mode ? '#A8C7FA' : '#9AA0A6', fontWeight: 500, textAlign: 'center', lineHeight: 1.3 }}>{label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div style={{ margin: '4px 12px', borderTop: '1px solid rgba(255,255,255,0.07)' }} />
+
+            {/* XP / Progress card */}
+            <div style={{ margin: '8px 12px', background: '#242424', borderRadius: 10, padding: 14, border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, color: '#9AA0A6', fontWeight: 500 }}>Your XP</span>
+                <span style={{ fontSize: 12, color: '#A8C7FA', fontWeight: 700 }}>{xp} pts</span>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${Math.min((xp % 500) / 5, 100)}%` }} />
+              </div>
+              <p style={{ fontSize: 11, color: '#9AA0A6', marginTop: 6 }}>{500 - (xp % 500)} XP to next level</p>
+            </div>
+
+            {/* Smart Board quick-launch */}
+            <div style={{ margin: '0 12px 8px' }}>
+              <button
+                onClick={() => router.push('/smart-board')}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: 10,
+                  background: '#004A77', color: '#C2E7FF', border: 'none',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+                }}
+              >
+                <span>🖊️</span> Open Smart Board
+              </button>
+            </div>
+
+            {/* Add note */}
+            <div style={{ margin: '0 12px 12px' }}>
+              <button
+                onClick={() => setCenterMode('notes')}
+                style={{
+                  width: '100%', padding: '10px 16px', borderRadius: 10,
+                  background: '#242424', color: '#E3E3E3',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+                }}
+              >
+                <span>📝</span> Add note
+              </button>
+            </div>
+          </aside>
+        </div>{/* end flex row */}
+      </div>{/* end outer wrapper */}
     </>
   );
 }
