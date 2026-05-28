@@ -199,6 +199,10 @@ export default function PlayerPage() {
 
   const platform = detectPlatform(video.url);
 
+  // ── Shared style objects ─────────────────────────────────────────────────
+  const headerBtn = { padding: '6px 14px', borderRadius: 20, background: 'rgba(168,199,250,0.1)', color: '#A8C7FA', border: '1px solid rgba(168,199,250,0.25)', fontSize: 13, fontWeight: 500, cursor: 'pointer' };
+  const headerIconBtn = { width: 34, height: 34, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#9AA0A6', cursor: 'pointer', fontSize: 16 };
+  const panelIconBtn = { width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: '#9AA0A6', cursor: 'pointer', fontSize: 14 };
 
   // ── JSX ───────────────────────────────────────────────────────────────────
   return (
