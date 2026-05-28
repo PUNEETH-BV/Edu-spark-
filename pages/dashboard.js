@@ -648,7 +648,7 @@ export default function Dashboard() {
         <title>EduSpark AI - Learning Hub</title>
       </Head>
 
-      <div className="min-h-screen flex text-text-primary bg-[#0d0d1a]">
+      <div className="min-h-screen flex text-text-primary bg-[#1A1A1A]">
         
         {/* Sidebar Component */}
         <div className={`transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'sidebar-nav' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-2xl bg-[#0d0d1a]' : ''}`}>
@@ -658,18 +658,18 @@ export default function Dashboard() {
         {/* Main Frame */}
         <main className="flex-1 flex flex-col h-screen overflow-y-auto" style={{ minWidth: 0 }}>
           {/* Top AppBar */}
-          <header className="sticky top-0 z-30 bg-[#0d0d1a]/80 backdrop-blur-xl border-b border-white/5 h-16 flex justify-between items-center px-6 md:px-10 shrink-0">
+          <header className="sticky top-0 z-30 bg-[#1A1A1A]/95 backdrop-blur-xl border-b border-white/[0.06] h-14 flex justify-between items-center px-6 md:px-8 shrink-0">
             <div className="flex items-center gap-4 flex-1">
               <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-85">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg,#7c3aed,#3b82f6)' }}>
-                  🎓
+                <div className="w-7 h-7 rounded-lg bg-[#A8C7FA]/10 flex items-center justify-center text-base">
+                  📚
                 </div>
-                <span className="text-lg font-bold font-display grad-text">EduSpark AI</span>
+                <span className="text-sm font-semibold text-white tracking-tight">EduSpark</span>
               </Link>
               
               {/* Resource Ranker Search Input */}
               <div 
-                className={`hidden md:flex flex-1 max-w-lg relative transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'search-bar' ? 'ring-4 ring-purple glow-purple z-50 rounded-xl bg-[#0d0d1a]' : ''}`}
+                className={`hidden md:flex flex-1 max-w-lg relative transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'search-bar' ? 'ring-2 ring-[#A8C7FA]/40 z-50 rounded-xl' : ''}`}
                 onMouseEnter={() => setSearchHover(true)}
                 onMouseLeave={() => setSearchHover(false)}
               >
@@ -686,7 +686,7 @@ export default function Dashboard() {
                   onKeyDown={handleKeyDown}
                   onFocus={() => { setSearchFocus(true); if (searchQuery.trim()) setShowDropdown(true); }}
                   onBlur={() => { setSearchFocus(false); setTimeout(() => setShowDropdown(false), 150); }}
-                  className="w-full h-9 pl-9 pr-24 rounded-xl border border-white/10 bg-surface1/60 text-xs focus:border-purple/50 focus:ring-0 outline-none text-text-primary placeholder-transparent caret-purple"
+                  className="w-full h-9 pl-9 pr-24 rounded-xl border border-white/[0.08] bg-[#2A2A2A] text-xs focus:border-[#A8C7FA]/40 focus:ring-0 outline-none text-white placeholder-transparent caret-[#A8C7FA]"
                   placeholder=""
                   disabled={searchLoading || addingVideo}
                 />
@@ -703,27 +703,27 @@ export default function Dashboard() {
                   onClick={() => runSearch()}
                   disabled={!searchQuery.trim() || searchLoading || addingVideo}
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-7 px-3 rounded-lg text-[10px] font-bold transition-all"
-                  style={{ background: searchQuery.trim() ? 'linear-gradient(135deg,#7c3aed,#3b82f6)' : 'rgba(255,255,255,0.05)', color: searchQuery.trim() ? '#fff' : 'rgba(255,255,255,0.3)', cursor: searchQuery.trim() ? 'pointer' : 'default' }}
+                  style={{ background: searchQuery.trim() ? '#004A77' : 'rgba(255,255,255,0.05)', color: searchQuery.trim() ? '#C2E7FF' : 'rgba(255,255,255,0.3)', cursor: searchQuery.trim() ? 'pointer' : 'default' }}
                 >
                   {searchLoading ? '...' : '⏎ Search'}
                 </button>
 
                 {/* Suggestion Dropdown */}
                 {showDropdown && searchQuery.trim() && !rankerResult && (
-                  <div className="absolute top-11 left-0 right-0 rounded-2xl border border-purple/35 p-3.5 shadow-2xl z-50 animate-slide-up flex flex-col gap-2" style={{ background: 'rgba(13,13,26,0.97)', backdropFilter: 'blur(20px)' }}>
-                    <p className="text-[10px] text-text-muted font-bold uppercase tracking-wider">🔍 Resource Ranker</p>
+                  <div className="absolute top-11 left-0 right-0 rounded-2xl border border-white/10 p-3.5 shadow-2xl z-50 animate-slide-up flex flex-col gap-2" style={{ background: '#252525', backdropFilter: 'blur(20px)' }}>
+                    <p className="text-[10px] text-[#9AA0A6] font-bold uppercase tracking-wider">🔍 Resource Ranker</p>
                     <button
                       onMouseDown={(e) => { e.preventDefault(); runSearch(); }}
                       disabled={searchLoading}
-                      className="text-left w-full p-3 rounded-xl bg-purple/10 border border-purple/25 hover:bg-purple/20 active:scale-[0.98] transition-all flex items-center justify-between gap-2 text-xs font-semibold text-text-primary"
+                      className="text-left w-full p-3 rounded-xl bg-[#A8C7FA]/10 border border-[#A8C7FA]/20 hover:bg-[#A8C7FA]/15 active:scale-[0.98] transition-all flex items-center justify-between gap-2 text-xs font-semibold text-white"
                     >
                       <span className="flex items-center gap-2 truncate">
                         <span className="text-base">✨</span>
                         <span className="truncate">Search learning path for "{searchQuery}"</span>
                       </span>
-                      <span className="badge badge-purple text-[8px] uppercase font-bold shrink-0 whitespace-nowrap">AI Ranked</span>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#A8C7FA]/10 text-[#A8C7FA] uppercase font-bold shrink-0 whitespace-nowrap border border-[#A8C7FA]/20">AI Ranked</span>
                     </button>
-                    <p className="text-[9px] text-text-muted px-1">Press <kbd className="px-1 py-0.5 rounded bg-white/10 font-mono">Enter</kbd> or click Search to find the best course path</p>
+                    <p className="text-[9px] text-[#9AA0A6] px-1">Press <kbd className="px-1 py-0.5 rounded bg-white/10 font-mono">Enter</kbd> or click Search to find the best course path</p>
                   </div>
                 )}
               </div>
@@ -732,7 +732,7 @@ export default function Dashboard() {
             {/* Icons */}
             <div className="flex items-center gap-4">
               {toastMessage && (
-                <div className="text-[10px] px-3 py-1.5 rounded-xl border border-purple/30 bg-purple/10 text-purple-light animate-pulse font-semibold">
+                <div className="text-[10px] px-3 py-1.5 rounded-xl border border-[#A8C7FA]/20 bg-[#A8C7FA]/10 text-[#A8C7FA] font-semibold">
                   {toastMessage}
                 </div>
               )}
@@ -766,16 +766,16 @@ export default function Dashboard() {
           </header>
 
           {/* Page Body Canvas */}
-          <div className="flex-1 p-6 md:p-10 space-y-8 max-w-[1200px] w-full mx-auto">
+          <div className="flex-1 p-6 md:p-8 space-y-7 max-w-[1200px] w-full mx-auto">
             {/* Hero welcome header */}
-            <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <section className="flex flex-col md:flex-row md:items-end justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-black font-display text-text-primary">Welcome back, {(profile?.username || 'User').split(' ')[0]}.</h1>
-                <p className="text-sm text-text-muted mt-1">Your AI tutor has identified 3 new optimized learning paths for you.</p>
+                <h1 className="text-xl font-semibold text-white">Welcome back, {(profile?.username || 'User').split(' ')[0]}.</h1>
+                <p className="text-sm text-[#9AA0A6] mt-0.5">Your AI tutor has identified 3 new optimized learning paths for you.</p>
               </div>
-              <div className="flex items-center gap-1.5 bg-purple/10 border border-purple/30 p-1.5 px-3 rounded-full text-purple font-bold text-xs shrink-0 self-start md:self-auto">
+              <div className="flex items-center gap-1.5 bg-[#A8C7FA]/10 border border-[#A8C7FA]/20 p-1.5 px-3 rounded-full text-[#A8C7FA] font-medium text-xs shrink-0 self-start md:self-auto">
                 <span>⚡</span>
-                <span className="uppercase tracking-wider font-mono font-bold text-[10px]">{profile?.streak_days || 0} Day Streak</span>
+                <span className="font-mono text-[10px]">{profile?.streak_days || 0} Day Streak</span>
               </div>
             </section>
 
@@ -792,7 +792,7 @@ export default function Dashboard() {
                     value={searchQuery}
                     onChange={handleSearch}
                     onKeyDown={handleKeyDown}
-                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-white/10 bg-surface1/60 text-sm focus:border-purple/50 focus:ring-0 outline-none text-text-primary"
+                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-white/[0.08] bg-[#2A2A2A] text-sm focus:border-[#A8C7FA]/40 focus:ring-0 outline-none text-white"
                     placeholder="Search any topic..."
                     disabled={searchLoading || addingVideo}
                   />
@@ -801,7 +801,7 @@ export default function Dashboard() {
                   onClick={() => runSearch()}
                   disabled={!searchQuery.trim() || searchLoading || addingVideo}
                   className="h-11 px-4 rounded-xl font-bold text-xs text-white shrink-0"
-                  style={{ background: 'linear-gradient(135deg,#7c3aed,#3b82f6)' }}
+                  style={{ background: '#004A77', color: '#C2E7FF' }}
                 >
                   {searchLoading ? '...' : '🔍'}
                 </button>
@@ -810,16 +810,16 @@ export default function Dashboard() {
 
             {/* RESOURCE RANKER SYSTEM POPUP/PANEL */}
             {rankerResult && rankerResult.TIER1 && (
-              <section className="glass rounded-[24px] p-6 border border-purple/30 glow-purple animate-slide-up space-y-6">
+              <section className="rounded-2xl p-6 border border-white/[0.08] bg-[#242424] animate-slide-up space-y-6">
                 <div className="flex justify-between items-start flex-wrap gap-2">
                   <div>
-                    <span className="badge badge-purple uppercase font-bold text-[9px] mb-1">Resource Ranker Path</span>
-                    <h2 className="text-lg font-bold text-text-primary font-display">Ranked Learning Resources</h2>
-                    <p className="text-xs text-text-muted mt-0.5">Scored out of 100 based on Authority, Quality, Recency, Relevance, Accessibility, and Popularity.</p>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/20 uppercase font-bold mb-1 inline-block">Resource Ranker Path</span>
+                    <h2 className="text-base font-semibold text-white mt-1">Ranked Learning Resources</h2>
+                    <p className="text-xs text-[#9AA0A6] mt-0.5">Scored out of 100 based on Authority, Quality, Recency, Relevance, Accessibility, and Popularity.</p>
                   </div>
                   <button
                     onClick={() => setRankerResult(null)}
-                    className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg border border-white/5 bg-surface1/60"
+                    className="text-xs text-[#9AA0A6] hover:text-white px-3 py-1.5 rounded-lg border border-white/[0.08] bg-[#2A2A2A]"
                   >
                     Close Results
                   </button>
@@ -827,12 +827,12 @@ export default function Dashboard() {
 
                 <div className="space-y-6">
                   {[
-                    { title: 'TIER 1 — Foundation (Official Docs, University OCW, Structured Courses)', key: 'TIER1', color: 'text-purple border-purple/20 bg-purple/5' },
-                    { title: 'TIER 2 — Practical (Video Tutorials, Guided Projects, Interactive Labs)', key: 'TIER2', color: 'text-blue border-blue/20 bg-blue/5' },
-                    { title: 'TIER 3 — Reference & Community (Articles/Blogs, Q&A Threads, Cheatsheets)', key: 'TIER3', color: 'text-cyan border-cyan/20 bg-cyan/5' }
+                    { title: 'TIER 1 — Foundation (Official Docs, University OCW, Structured Courses)', key: 'TIER1', color: 'text-[#A8C7FA] border-[#A8C7FA]/15 bg-[#A8C7FA]/5' },
+                    { title: 'TIER 2 — Practical (Video Tutorials, Guided Projects, Interactive Labs)', key: 'TIER2', color: 'text-[#81C995] border-[#81C995]/15 bg-[#81C995]/5' },
+                    { title: 'TIER 3 — Reference & Community (Articles/Blogs, Q&A Threads, Cheatsheets)', key: 'TIER3', color: 'text-[#FDD663] border-[#FDD663]/15 bg-[#FDD663]/5' }
                   ].map(tier => (
                     <div key={tier.key} className="space-y-3">
-                      <div className={`p-2 rounded-xl border text-xs font-bold font-display flex items-center gap-2 ${tier.color}`}>
+                      <div className={`p-2 rounded-xl border text-xs font-medium flex items-center gap-2 ${tier.color}`}>
                         <span>📌</span> {tier.title}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -840,35 +840,35 @@ export default function Dashboard() {
                           <div 
                             key={res.id} 
                             onClick={() => handleActivateRankedResource(res)}
-                            className="glass p-4 rounded-2xl border border-white/5 flex flex-col justify-between hover:scale-[1.01] hover:border-purple/35 cursor-pointer transition-transform space-y-4"
+                            className="p-4 rounded-2xl border border-white/[0.07] bg-[#2A2A2A] flex flex-col justify-between hover:border-[#A8C7FA]/25 hover:bg-[#2E2E2E] cursor-pointer transition-all space-y-4"
                           >
                             <div className="space-y-2">
                               <div className="flex justify-between items-start">
-                                <span className="badge badge-blue text-[8px] uppercase tracking-wider font-mono">{res.source}</span>
+                                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/15 uppercase font-bold font-mono">{res.source}</span>
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-text-muted font-bold">Score:</span>
-                                  <span className="text-xs font-black text-green font-mono">{res.score}/100</span>
+                                  <span className="text-[10px] text-[#9AA0A6] font-medium">Score:</span>
+                                  <span className="text-xs font-bold text-[#81C995] font-mono">{res.score}/100</span>
                                 </div>
                               </div>
-                              <h4 className="font-bold text-xs text-text-primary leading-snug line-clamp-2">{res.title}</h4>
-                              <p className="text-[10px] text-text-muted line-clamp-2 leading-relaxed">{res.description}</p>
+                              <h4 className="font-medium text-xs text-white leading-snug line-clamp-2">{res.title}</h4>
+                              <p className="text-[10px] text-[#9AA0A6] line-clamp-2 leading-relaxed">{res.description}</p>
                             </div>
 
-                            <div className="space-y-2 pt-2 border-t border-white/5">
-                              <div className="text-[9px] text-[#c4b5fd] font-medium italic line-clamp-2">
-                                💡 Notes: {res.notes}
+                            <div className="space-y-2 pt-2 border-t border-white/[0.06]">
+                              <div className="text-[9px] text-[#A8C7FA]/70 italic line-clamp-2">
+                                💡 {res.notes}
                               </div>
                               <div className="flex gap-1.5 pt-1">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setBreakdownRes(res); }}
-                                  className="flex-1 text-[9px] font-bold text-text-muted hover:text-text-primary bg-surface2/50 border border-white/5 py-1.5 rounded-lg transition-colors"
+                                  className="flex-1 text-[9px] font-medium text-[#9AA0A6] hover:text-white bg-white/5 border border-white/[0.07] py-1.5 rounded-lg transition-colors"
                                 >
                                   Breakdown
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleActivateRankedResource(res); }}
                                   disabled={addingVideo}
-                                  className="flex-1 text-[9px] font-bold text-white bg-gradient-to-r from-purple to-blue hover:scale-[1.02] active:scale-[0.98] py-1.5 rounded-lg transition-all"
+                                  className="flex-1 text-[9px] font-medium text-[#C2E7FF] bg-[#004A77] hover:bg-[#00579A] py-1.5 rounded-lg transition-all"
                                 >
                                   Activate 🚀
                                 </button>
@@ -892,8 +892,8 @@ export default function Dashboard() {
                 {/* Active Roadmaps */}
                 <div className={`space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'active-roadmaps' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-bold font-display text-text-primary">Active Roadmaps</h2>
-                    <Link href="/player" className="text-xs text-purple font-semibold hover:underline">
+                    <h2 className="text-base font-semibold text-white">Active Roadmaps</h2>
+                    <Link href="/player" className="text-xs text-[#A8C7FA] hover:underline">
                       View All
                     </Link>
                   </div>
@@ -909,35 +909,33 @@ export default function Dashboard() {
                         const strokeOffset = strokeDash - (pct / 100) * strokeDash;
                         
                         return (
-                          <div key={v.id} className="min-w-[320px] md:min-w-[360px] snap-start glass rounded-3xl p-5 relative overflow-hidden group border border-white/5 hover:border-purple/35 transition-all">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-purple/5 rounded-full blur-2xl" />
-                            
+                          <div key={v.id} className="min-w-[300px] md:min-w-[340px] snap-start rounded-2xl p-5 relative overflow-hidden group border border-white/[0.07] bg-[#242424] hover:border-[#A8C7FA]/20 transition-all">
                             <div className="flex justify-between items-start mb-4">
-                              <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/20 flex items-center justify-center text-xl text-purple">
+                              <div className="w-9 h-9 rounded-xl bg-[#A8C7FA]/10 border border-[#A8C7FA]/15 flex items-center justify-center text-lg">
                                 📚
                               </div>
                               {/* Progress Circle */}
-                              <div className="relative w-12 h-12 shrink-0">
+                              <div className="relative w-10 h-10 shrink-0">
                                 <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                                  <path className="text-white/5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                                  <path className="text-purple glow-cyan" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeDasharray={`${pct}, 100`} strokeLinecap="round" strokeWidth="3" />
+                                  <path className="text-white/[0.07]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
+                                  <path style={{ color: '#A8C7FA' }} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeDasharray={`${pct}, 100`} strokeLinecap="round" strokeWidth="3" />
                                 </svg>
-                                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-bold font-mono">{pct}%</span>
+                                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold font-mono text-white">{pct}%</span>
                               </div>
                             </div>
 
-                            <h3 className="font-semibold text-sm text-text-primary line-clamp-1">{v.title}</h3>
-                            <p className="text-xs text-text-muted mt-1 mb-4">
-                              Subject: <span className="text-purple-light font-medium">{v.subject || 'General'}</span>
+                            <h3 className="font-medium text-sm text-white line-clamp-1">{v.title}</h3>
+                            <p className="text-xs text-[#9AA0A6] mt-1 mb-4">
+                              Subject: <span className="text-[#A8C7FA]">{v.subject || 'General'}</span>
                             </p>
                             
                             <div className="flex gap-2">
-                              <Link href={`/player/${v.id}`} className="flex-1 btn-primary py-2 text-xs font-bold rounded-xl text-center">
-                                <span>Resume Learning</span>
+                              <Link href={`/player/${v.id}`} className="flex-1 py-2 text-xs font-medium rounded-xl text-center bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] transition-colors">
+                                Resume
                               </Link>
                               <button
                                 onClick={(e) => handleDeleteVideo(v.id, e)}
-                                className="btn-secondary p-2 rounded-xl text-text-muted hover:text-red-400 hover:border-red-400/40"
+                                className="px-3 py-2 rounded-xl text-[#9AA0A6] hover:text-red-400 bg-white/5 hover:bg-white/[0.08] border border-white/[0.07] transition-colors"
                                 title="Delete Roadmap"
                               >
                                 🗑️
@@ -954,15 +952,14 @@ export default function Dashboard() {
                             { title: 'Python for Beginners', subject: 'Programming', icon: '🐍', color: '#3b82f6', url: 'https://www.youtube.com/watch?v=kqtD5dpn9C8' },
                             { title: 'Introduction to Machine Learning', subject: 'AI & ML', icon: '🤖', color: '#22c55e', url: 'https://www.youtube.com/watch?v=aircAruvnKk' },
                           ].map((s, i) => (
-                            <div key={i} className="min-w-[320px] md:min-w-[360px] snap-start glass rounded-3xl p-5 relative overflow-hidden group border border-dashed border-white/10 hover:border-purple/35 transition-all cursor-pointer opacity-80 hover:opacity-100" style={{ borderColor: `${s.color}30` }}>
-                              <div className="absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl" style={{ background: `${s.color}08` }} />
+                            <div key={i} className="min-w-[280px] md:min-w-[300px] snap-start rounded-2xl p-5 border border-dashed border-white/[0.08] bg-[#242424] hover:border-[#A8C7FA]/20 transition-all cursor-pointer">
                               <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl border border-white/10" style={{ background: `${s.color}15` }}>{s.icon}</div>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: `${s.color}18`, color: s.color }}>Suggested</span>
+                                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base border border-white/[0.08] bg-white/5">{s.icon}</div>
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-medium bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/15">Suggested</span>
                               </div>
-                              <h3 className="font-semibold text-sm text-text-primary line-clamp-1">{s.title}</h3>
-                              <p className="text-xs text-text-muted mt-1 mb-4">Subject: <span className="text-purple-light font-medium">{s.subject}</span></p>
-                              <p className="text-xs text-text-muted italic">Search this topic above to start your roadmap →</p>
+                              <h3 className="font-medium text-sm text-white line-clamp-1">{s.title}</h3>
+                              <p className="text-xs text-[#9AA0A6] mt-1 mb-3">Subject: <span className="text-[#A8C7FA]">{s.subject}</span></p>
+                              <p className="text-xs text-[#9AA0A6] italic">Search this topic above to start →</p>
                             </div>
                           ))}
                         </>
@@ -974,8 +971,8 @@ export default function Dashboard() {
                 {/* Recommended Feed */}
                 <div className={`space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'recommends-feed' ? 'ring-4 ring-purple glow-purple z-50 relative rounded-3xl bg-[#0d0d1a] p-3' : ''}`}>
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-bold font-display text-text-primary">Recommended for You</h2>
-                    <span className="badge badge-purple text-[10px] font-bold">Reputation Ranked</span>
+                    <h2 className="text-base font-semibold text-white">Recommended for You</h2>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#81C995]/10 text-[#81C995] border border-[#81C995]/20 font-medium">Reputation Ranked</span>
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -987,7 +984,7 @@ export default function Dashboard() {
                       <div
                         key={i}
                         onClick={() => handleAddRecommended(c)}
-                        className="glass rounded-2xl overflow-hidden hover:-translate-y-1 transition-transform border border-white/5 group cursor-pointer"
+                        className="rounded-2xl overflow-hidden border border-white/[0.07] bg-[#242424] hover:border-[#A8C7FA]/20 hover:-translate-y-0.5 transition-all cursor-pointer group"
                       >
                         <div className="h-28 bg-[#12122a] relative">
                           <img src={c.img} alt={c.title} className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform" />
@@ -996,8 +993,8 @@ export default function Dashboard() {
                           </span>
                         </div>
                         <div className="p-3.5 space-y-2">
-                          <h4 className="font-bold text-xs text-text-primary line-clamp-1 leading-snug">{c.title}</h4>
-                          <div className="flex items-center justify-between text-[10px] text-text-muted font-medium">
+                          <h4 className="font-medium text-xs text-white line-clamp-1 leading-snug">{c.title}</h4>
+                          <div className="flex items-center justify-between text-[10px] text-[#9AA0A6]">
                             <span>{c.students}</span>
                             <span className="text-yellow flex items-center gap-0.5">★ {c.rating}</span>
                           </div>
@@ -1008,21 +1005,21 @@ export default function Dashboard() {
                 </div>
 
                 {/* Multi-Source Ingest / NotebookLM Widget */}
-                <div className={`glass rounded-[24px] p-5 border border-white/5 space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'ingestion-hub' ? 'ring-4 ring-purple glow-purple z-50 relative bg-[#0d0d1a]' : ''}`}>
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-white/5 pb-3 gap-2">
-                    <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider font-display">📥 Ingest Study Sources (NotebookLM)</h3>
-                    <div className="flex gap-1 bg-surface1 p-1 rounded-lg border border-white/5">
+                <div className={`rounded-2xl p-5 border border-white/[0.07] bg-[#242424] space-y-4 transition-all duration-300 ${showTour && DASHBOARD_TOUR_STEPS[tourStep].target === 'ingestion-hub' ? 'ring-2 ring-[#A8C7FA]/30 z-50 relative' : ''}`}>
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-white/[0.06] pb-3 gap-2">
+                    <h3 className="text-sm font-medium text-white">📥 Add Study Sources</h3>
+                    <div className="flex gap-1 bg-[#1E1E1E] p-1 rounded-lg border border-white/[0.06]">
                       {[
                         { key: 'youtube', label: '🎥 YouTube' },
                         { key: 'pdf', label: '📄 PDF' },
-                        { key: 'text', label: '📝 Note/Text' },
+                        { key: 'text', label: '📝 Notes' },
                         { key: 'web', label: '🌐 Website' }
                       ].map(tab => (
                         <button
                           key={tab.key}
                           type="button"
                           onClick={() => setIngestTab(tab.key)}
-                          className={`text-[9px] font-bold px-2 py-1 rounded transition-all ${ingestTab === tab.key ? 'bg-purple/20 text-[#c4b5fd]' : 'text-text-muted hover:text-text-primary'}`}
+                          className={`text-[9px] font-medium px-2.5 py-1.5 rounded transition-all ${ingestTab === tab.key ? 'bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/20' : 'text-[#9AA0A6] hover:text-white'}`}
                         >
                           {tab.label}
                         </button>
@@ -1035,13 +1032,13 @@ export default function Dashboard() {
                       <input
                         value={newUrl}
                         onChange={e => { setNewUrl(e.target.value); setNewUrlError(''); }}
-                        className="input text-xs bg-[#0d0d1a] border-white/10"
-                        placeholder="Paste YouTube lecture URL (e.g. https://www.youtube.com/watch?v=Ke90Tje7VS0)..."
+                        className="input text-xs bg-[#1E1E1E] border-white/[0.08] text-white placeholder-[#9AA0A6] focus:border-[#A8C7FA]/30"
+                        placeholder="Paste YouTube lecture URL (e.g. https://www.youtube.com/watch?v=...)..."
                       />
                       <button
                         type="submit"
                         disabled={addingVideo || !newUrl.trim()}
-                        className="btn-primary py-2 px-4 rounded-xl text-xs font-bold shrink-0 shadow-lg animate-float"
+                        className="py-2 px-4 rounded-xl text-xs font-medium shrink-0 bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] disabled:opacity-40 transition-colors"
                       >
                         <span>{addingVideo ? 'Scanning...' : 'Scan & Ingest'}</span>
                       </button>
@@ -1050,9 +1047,9 @@ export default function Dashboard() {
 
                   {ingestTab === 'pdf' && (
                     <form onSubmit={handleIngestPdf} className="space-y-3">
-                      <div className="border border-dashed border-white/10 bg-[#0d0d1a]/50 p-4 rounded-xl text-center space-y-2">
+                      <div className="border border-dashed border-white/[0.08] bg-[#1E1E1E] p-4 rounded-xl text-center space-y-2">
                         <span className="text-2xl">📄</span>
-                        <div className="text-[10px] text-text-muted font-medium">Select a PDF syllabus, notes sheet, or lecture slides</div>
+                        <div className="text-[10px] text-[#9AA0A6]">Select a PDF syllabus, notes sheet, or lecture slides</div>
                         <input
                           type="file"
                           accept=".pdf"
@@ -1068,7 +1065,7 @@ export default function Dashboard() {
                         />
                         <label
                           htmlFor="pdf-upload-input"
-                          className="inline-block text-[10px] bg-surface2/60 border border-white/10 hover:border-purple/35 text-text-primary px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                          className="inline-block text-[10px] bg-[#2A2A2A] border border-white/[0.08] hover:border-[#A8C7FA]/30 text-white px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
                         >
                           Choose PDF File
                         </label>
@@ -1077,7 +1074,7 @@ export default function Dashboard() {
                       <button
                         type="submit"
                         disabled={addingVideo || !pdfName}
-                        className="btn-primary w-full py-2 text-xs font-bold rounded-xl"
+                        className="w-full py-2 text-xs font-medium rounded-xl bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] disabled:opacity-40 transition-colors"
                       >
                         {addingVideo ? 'Processing PDF...' : 'Ingest PDF Source'}
                       </button>
@@ -1090,20 +1087,20 @@ export default function Dashboard() {
                       <input
                         value={docTitle}
                         onChange={e => setDocTitle(e.target.value)}
-                        className="input text-xs bg-[#0d0d1a] border-white/10"
+                        className="input text-xs bg-[#1E1E1E] border-white/[0.08] text-white placeholder-[#9AA0A6]"
                         placeholder="Document Title (e.g. Photosynthesis Lecture Notes)..."
                       />
                       <textarea
                         value={docContent}
                         onChange={e => setDocContent(e.target.value)}
                         rows={3}
-                        className="input text-xs bg-[#0d0d1a] border-white/10 py-2 resize-none"
+                        className="input text-xs bg-[#1E1E1E] border-white/[0.08] text-white placeholder-[#9AA0A6] py-2 resize-none"
                         placeholder="Paste lecture transcript, reading text, or study guide notes here..."
                       />
                       <button
                         type="submit"
                         disabled={addingVideo || !docTitle.trim() || !docContent.trim()}
-                        className="btn-primary w-full py-2 text-xs font-bold rounded-xl"
+                        className="w-full py-2 text-xs font-medium rounded-xl bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] disabled:opacity-40 transition-colors"
                       >
                         {addingVideo ? 'Compiling Notes...' : 'Ingest Note/Text'}
                       </button>
@@ -1116,13 +1113,13 @@ export default function Dashboard() {
                       <input
                         value={webUrl}
                         onChange={e => { setWebUrl(e.target.value); setWebUrlError(''); }}
-                        className="input text-xs bg-[#0d0d1a] border-white/10"
+                        className="input text-xs bg-[#1E1E1E] border-white/[0.08] text-white placeholder-[#9AA0A6]"
                         placeholder="Paste documentation page or study guide URL (starting with https://)..."
                       />
                       <button
                         type="submit"
                         disabled={addingVideo || !webUrl.trim()}
-                        className="btn-primary w-full py-2 text-xs font-bold rounded-xl"
+                        className="w-full py-2 text-xs font-medium rounded-xl bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] disabled:opacity-40 transition-colors"
                       >
                         {addingVideo ? 'Fetching Web Content...' : 'Ingest Website URL'}
                       </button>
@@ -1137,30 +1134,29 @@ export default function Dashboard() {
               <div className="lg:col-span-4 space-y-8">
                 
                 {/* Learning Metrics */}
-                <div className="glass rounded-3xl p-5 border border-white/5 space-y-4">
-                  <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">Learning Metrics</h3>
+                <div className="rounded-2xl p-5 border border-white/[0.07] bg-[#242424] space-y-4">
+                  <h3 className="text-xs font-medium text-[#9AA0A6] uppercase tracking-wider">Learning Metrics</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#12122a]/80 p-3.5 rounded-xl border border-white/5">
-                      <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Hours Studied</p>
+                    <div className="bg-[#1E1E1E] p-3.5 rounded-xl border border-white/[0.06]">
+                      <p className="text-[9px] text-[#9AA0A6] uppercase font-medium tracking-wider">Hours Studied</p>
                       <div className="flex items-end gap-1 mt-1.5">
-                        <span className="text-lg font-bold text-purple">{profile.hours_studied ?? 0}</span>
-                        {(profile.hours_studied ?? 0) > 0 && <span className="text-[9px] text-green font-bold pb-0.5 font-mono">+12%</span>}
+                        <span className="text-lg font-semibold text-[#A8C7FA]">{profile.hours_studied ?? 0}</span>
+                        {(profile.hours_studied ?? 0) > 0 && <span className="text-[9px] text-[#81C995] font-medium pb-0.5">+12%</span>}
                       </div>
-                      {(profile.hours_studied ?? 0) === 0 && <p className="text-[8px] text-text-muted mt-1 italic">Start a course to track hours ✨</p>}
+                      {(profile.hours_studied ?? 0) === 0 && <p className="text-[8px] text-[#9AA0A6] mt-1 italic">Start a course ✨</p>}
                     </div>
-                    <div className="bg-[#12122a]/80 p-3.5 rounded-xl border border-white/5">
-                      <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Points Earned</p>
+                    <div className="bg-[#1E1E1E] p-3.5 rounded-xl border border-white/[0.06]">
+                      <p className="text-[9px] text-[#9AA0A6] uppercase font-medium tracking-wider">Points Earned</p>
                       <div className="flex items-end gap-1 mt-1.5">
-                        <span className="text-lg font-bold text-blue">{profile.xp ?? 0}</span>
-                        {(profile.xp ?? 0) > 0 && <span className="text-yellow text-[9px] pb-0.5">★</span>}
+                        <span className="text-lg font-semibold text-[#81C995]">{profile.xp ?? 0}</span>
+                        {(profile.xp ?? 0) > 0 && <span className="text-[#FDD663] text-[9px] pb-0.5">★</span>}
                       </div>
-                      {(profile.xp ?? 0) === 0 && <p className="text-[8px] text-text-muted mt-1 italic">Complete quizzes to earn XP 🚀</p>}
+                      {(profile.xp ?? 0) === 0 && <p className="text-[8px] text-[#9AA0A6] mt-1 italic">Complete quizzes 🚀</p>}
                     </div>
                   </div>
 
-                  {/* Badges block */}
-                  <div className="border-t border-white/5 pt-3.5 space-y-2">
-                    <p className="text-[9px] text-text-muted uppercase font-bold tracking-wider">Recent Badges</p>
+                  <div className="border-t border-white/[0.06] pt-3.5 space-y-2">
+                    <p className="text-[9px] text-[#9AA0A6] uppercase font-medium tracking-wider">Recent Badges</p>
                     <div className="flex gap-2">
                       {[
                         { icon: '👁️', name: 'First Watch' },
@@ -1170,7 +1166,7 @@ export default function Dashboard() {
                       ].map((b, idx) => (
                         <div
                           key={idx}
-                          className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-lg bg-surface2/30 shadow-md cursor-help hover:scale-105 transition-transform"
+                          className="w-9 h-9 rounded-full border border-white/[0.08] flex items-center justify-center text-base bg-[#1E1E1E] cursor-help hover:scale-105 transition-transform"
                           title={b.name}
                           style={{ opacity: b.name === 'Locked' ? 0.3 : 1 }}
                         >
@@ -1182,22 +1178,22 @@ export default function Dashboard() {
                 </div>
 
                 {/* Schedule Widget */}
-                <div className="glass rounded-3xl p-5 border border-white/5 space-y-4">
+                <div className="rounded-2xl p-5 border border-white/[0.07] bg-[#242424] space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider">Today's Schedule</h3>
-                    <span className="badge badge-purple text-[10px] font-bold">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    <h3 className="text-xs font-medium text-[#9AA0A6] uppercase tracking-wider">Today's Schedule</h3>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/20">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
 
-                  <div className="space-y-4 font-sans">
+                  <div className="space-y-4">
                     {[
-                      { time: '09:00 AM — 10:30 AM', title: 'Deep Learning Workshop', room: 'Google Meet Room', icon: 'videocam', color: 'border-purple/35 text-purple' },
-                      { time: '01:00 PM — 02:00 PM', title: 'Team Study Session', room: '#Community-Alpha', icon: 'groups', color: 'border-blue/35 text-blue' },
-                      { time: '04:30 PM — 05:00 PM', title: 'AI Tutor Sync', room: 'Voice Call Ready', icon: 'smart_toy', color: 'border-green/35 text-green' }
+                      { time: '09:00 AM — 10:30 AM', title: 'Deep Learning Workshop', room: 'Google Meet Room', icon: 'videocam', color: 'border-[#A8C7FA]/40 text-[#A8C7FA]' },
+                      { time: '01:00 PM — 02:00 PM', title: 'Team Study Session', room: '#Community-Alpha', icon: 'groups', color: 'border-[#81C995]/40 text-[#81C995]' },
+                      { time: '04:30 PM — 05:00 PM', title: 'AI Tutor Sync', room: 'Voice Call Ready', icon: 'smart_toy', color: 'border-[#FDD663]/40 text-[#FDD663]' }
                     ].map((ev, idx) => (
-                      <div key={idx} className={`pl-4 border-l-2 ${ev.color.split(' ')[0]} space-y-1`}>
-                        <p className={`text-[9px] font-bold font-mono tracking-wide ${ev.color.split(' ')[1]}`}>{ev.time}</p>
-                        <h4 className="text-xs font-bold text-text-primary leading-snug">{ev.title}</h4>
-                        <p className="text-[10px] text-text-muted flex items-center gap-1 font-medium">
+                      <div key={idx} className={`pl-4 border-l-2 ${ev.color.split(' ')[0]} space-y-0.5`}>
+                        <p className={`text-[9px] font-medium font-mono ${ev.color.split(' ')[1]}`}>{ev.time}</p>
+                        <h4 className="text-xs font-medium text-white leading-snug">{ev.title}</h4>
+                        <p className="text-[10px] text-[#9AA0A6] flex items-center gap-1">
                           <span className="material-symbols-outlined text-[10px]">{ev.icon}</span>
                           {ev.room}
                         </p>
@@ -1207,7 +1203,7 @@ export default function Dashboard() {
 
                   <button
                     onClick={() => { setToastMessage("Opening calendar settings..."); setTimeout(() => setToastMessage(""), 3000); }}
-                    className="w-full py-2.5 rounded-xl border border-white/10 text-text-primary hover:bg-white/5 transition-colors font-bold text-xs"
+                    className="w-full py-2.5 rounded-xl border border-white/[0.08] text-white hover:bg-white/5 transition-colors text-xs"
                   >
                     Manage Calendar
                   </button>
@@ -1220,23 +1216,23 @@ export default function Dashboard() {
           {/* Points Breakdown Modal */}
           {breakdownRes && (
             <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-              <div className="w-full max-w-lg bg-[#0c0c1a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-5 relative">
+              <div className="w-full max-w-lg bg-[#242424] border border-white/[0.08] rounded-2xl p-6 shadow-2xl space-y-5 relative">
                 <button
                   onClick={() => setBreakdownRes(null)}
-                  className="absolute top-4 right-4 w-7 h-7 rounded-full bg-surface2/60 border border-white/10 hover:border-white/20 flex items-center justify-center text-text-muted hover:text-text-primary transition-colors text-sm"
+                  className="absolute top-4 right-4 w-7 h-7 rounded-full bg-[#2A2A2A] border border-white/[0.08] hover:border-white/20 flex items-center justify-center text-[#9AA0A6] hover:text-white transition-colors text-sm"
                 >
                   ✕
                 </button>
                 <div className="space-y-1">
-                  <span className="badge badge-purple uppercase font-bold text-[8px]">Resource Scoring Audit</span>
-                  <h3 className="text-sm font-black text-text-primary font-display line-clamp-1">{breakdownRes.title}</h3>
-                  <p className="text-[10px] text-text-muted font-semibold">Source: <span className="text-[#c4b5fd] font-bold">{breakdownRes.source}</span></p>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#A8C7FA]/10 text-[#A8C7FA] border border-[#A8C7FA]/20 uppercase font-medium inline-block mb-1">Resource Scoring Audit</span>
+                  <h3 className="text-sm font-semibold text-white line-clamp-1">{breakdownRes.title}</h3>
+                  <p className="text-[10px] text-[#9AA0A6]">Source: <span className="text-[#A8C7FA]">{breakdownRes.source}</span></p>
                 </div>
 
                 <div className="space-y-3.5 pt-2">
-                  <div className="flex justify-between items-center bg-[#12122a] p-3 rounded-xl border border-white/5">
-                    <span className="text-xs font-bold text-text-primary">🏆 Final Scoring Grade</span>
-                    <span className="text-sm font-black text-green font-mono">{breakdownRes.score} / 100</span>
+                  <div className="flex justify-between items-center bg-[#1E1E1E] p-3 rounded-xl border border-white/[0.06]">
+                    <span className="text-xs font-medium text-white">🏆 Final Scoring Grade</span>
+                    <span className="text-sm font-bold text-[#81C995] font-mono">{breakdownRes.score} / 100</span>
                   </div>
 
                   <div className="space-y-2.5 max-h-[40vh] overflow-y-auto pr-1">
@@ -1248,22 +1244,22 @@ export default function Dashboard() {
                       { label: 'Accessibility', value: breakdownRes.accessibility, max: 10, desc: 'Free content, no paywall, no account required' },
                       { label: 'Popularity Signal', value: breakdownRes.popularity, max: 10, desc: 'Views, stars, upvotes, citations' }
                     ].map(metric => (
-                      <div key={metric.label} className="bg-surface2/30 p-2.5 rounded-xl border border-white/5 space-y-1">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-text-primary">{metric.label}</span>
-                          <span className="text-[#c4b5fd] font-mono">{metric.value} / {metric.max}</span>
+                      <div key={metric.label} className="bg-[#1E1E1E] p-2.5 rounded-xl border border-white/[0.06] space-y-1">
+                        <div className="flex justify-between text-[10px] font-medium">
+                          <span className="text-white">{metric.label}</span>
+                          <span className="text-[#A8C7FA] font-mono">{metric.value} / {metric.max}</span>
                         </div>
-                        <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                          <div className="bg-purple h-full" style={{ width: `${(metric.value / metric.max) * 100}%` }} />
+                        <div className="w-full bg-white/[0.06] h-1 rounded-full overflow-hidden">
+                          <div className="bg-[#A8C7FA] h-full" style={{ width: `${(metric.value / metric.max) * 100}%` }} />
                         </div>
-                        <p className="text-[8px] text-text-muted leading-tight">{metric.desc}</p>
+                        <p className="text-[8px] text-[#9AA0A6] leading-tight">{metric.desc}</p>
                       </div>
                     ))}
 
                     {breakdownRes.bonuses && breakdownRes.bonuses.length > 0 && (
-                      <div className="bg-purple/5 p-3 rounded-xl border border-purple/20 space-y-1.5">
-                        <p className="text-[9px] uppercase font-bold text-purple-light tracking-wider">🌟 Stacked Bonus Points (+5 each)</p>
-                        <ul className="list-disc pl-4 text-[9px] text-text-muted space-y-0.5">
+                      <div className="bg-[#A8C7FA]/5 p-3 rounded-xl border border-[#A8C7FA]/15 space-y-1.5">
+                        <p className="text-[9px] uppercase font-medium text-[#A8C7FA] tracking-wider">🌟 Stacked Bonus Points (+5 each)</p>
+                        <ul className="list-disc pl-4 text-[9px] text-[#9AA0A6] space-y-0.5">
                           {breakdownRes.bonuses.map((bonus, i) => (
                             <li key={i}>{bonus}</li>
                           ))}
@@ -1279,7 +1275,7 @@ export default function Dashboard() {
                     setBreakdownRes(null);
                     handleActivateRankedResource(res);
                   }}
-                  className="w-full btn-primary py-2 text-xs font-bold rounded-xl text-center"
+                  className="w-full py-2 text-xs font-medium rounded-xl text-center bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] transition-colors"
                 >
                   Activate Study Path 🚀
                 </button>
@@ -1295,33 +1291,31 @@ export default function Dashboard() {
           {/* New User Tour Dialog Card */}
           {showTour && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-              <div className="glass rounded-[28px] p-6 max-w-sm w-full border border-purple/45 shadow-2xl relative glow-purple animate-slide-up space-y-4 pointer-events-auto">
+              <div className="rounded-2xl p-6 max-w-sm w-full border border-white/[0.08] bg-[#242424] shadow-2xl relative animate-slide-up space-y-4 pointer-events-auto">
                 <button 
                   onClick={() => { setShowTour(false); localStorage.removeItem('is_new_user_tour'); }} 
-                  className="absolute top-4 right-4 text-text-muted hover:text-text-primary text-sm"
+                  className="absolute top-4 right-4 text-[#9AA0A6] hover:text-white text-sm"
                 >
                   ✕
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple/10 border border-purple/35 flex items-center justify-center text-xl text-purple">
+                  <div className="w-9 h-9 rounded-xl bg-[#A8C7FA]/10 border border-[#A8C7FA]/20 flex items-center justify-center text-lg">
                     🚀
                   </div>
                   <div>
-                    <h3 className="font-display font-bold text-sm text-text-primary">{DASHBOARD_TOUR_STEPS[tourStep].title}</h3>
-                    <span className="text-[10px] text-text-muted font-medium">Dashboard Tour · Step {tourStep + 1} of {DASHBOARD_TOUR_STEPS.length}</span>
+                    <h3 className="font-medium text-sm text-white">{DASHBOARD_TOUR_STEPS[tourStep].title}</h3>
+                    <span className="text-[10px] text-[#9AA0A6]">Dashboard Tour · Step {tourStep + 1} of {DASHBOARD_TOUR_STEPS.length}</span>
                   </div>
                 </div>
-                <p className="text-xs leading-relaxed text-text-muted">
+                <p className="text-xs leading-relaxed text-[#9AA0A6]">
                   {DASHBOARD_TOUR_STEPS[tourStep].text}
                 </p>
                 <div className="flex justify-between items-center gap-2 pt-2">
                   <button 
                     type="button"
-                    onClick={() => {
-                      if (tourStep > 0) setTourStep(tourStep - 1);
-                    }} 
+                    onClick={() => { if (tourStep > 0) setTourStep(tourStep - 1); }} 
                     disabled={tourStep === 0}
-                    className="btn-secondary py-2 px-3 rounded-xl text-xs font-bold disabled:opacity-40"
+                    className="py-2 px-3 rounded-xl text-xs border border-white/[0.08] text-[#9AA0A6] hover:text-white hover:bg-white/5 disabled:opacity-40 transition-colors"
                   >
                     Back
                   </button>
@@ -1335,7 +1329,7 @@ export default function Dashboard() {
                         localStorage.removeItem('is_new_user_tour');
                       }
                     }} 
-                    className="btn-primary py-2.5 px-4 rounded-xl text-xs font-bold"
+                    className="py-2.5 px-4 rounded-xl text-xs font-medium bg-[#004A77] text-[#C2E7FF] hover:bg-[#00579A] transition-colors"
                   >
                     {tourStep === DASHBOARD_TOUR_STEPS.length - 1 ? 'Finish Tour 🚀' : 'Next'}
                   </button>

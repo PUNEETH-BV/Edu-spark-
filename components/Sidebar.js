@@ -98,65 +98,56 @@ export default function Sidebar({
   const friendsHref = `/player/${resolvedVidId}?sidebar=friends`;
 
   return (
-    <aside className="hidden lg:flex flex-col h-screen sticky top-0 left-0 w-[280px] py-6 px-4 border-r border-white/5 bg-surface1/60 backdrop-blur-2xl z-40 shrink-0 select-none">
-      <div className="mb-8 px-2">
-        <div className="flex items-center gap-3 p-3 glass rounded-2xl">
-          <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center text-xl text-purple">
-            🤖
+    <aside className="hidden lg:flex flex-col h-screen sticky top-0 left-0 w-[260px] py-5 px-3 border-r border-white/[0.06] bg-[#1D1D1D] z-40 shrink-0 select-none">
+      {/* Brand */}
+      <div className="mb-6 px-2">
+        <div className="flex items-center gap-2.5 px-2 py-2">
+          <div className="w-8 h-8 rounded-lg bg-[#A8C7FA]/10 flex items-center justify-center text-base">
+            📚
           </div>
           <div>
-            <p className="text-xs font-bold text-text-primary leading-tight font-display">AI Learning Hub</p>
-            <p className="text-[9px] uppercase tracking-widest text-green font-bold mt-0.5 animate-pulse">Voice Active</p>
+            <p className="text-sm font-semibold text-white leading-tight tracking-tight">EduSpark</p>
+            <p className="text-[10px] text-[#A8C7FA]/60 mt-0.5">AI Learning Hub</p>
           </div>
         </div>
       </div>
-      
-      <nav className="flex-1 space-y-1">
-        <Link href="/dashboard" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isDashboardActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">home</span>
-          <span className="text-xs">Dashboard</span>
-        </Link>
-        <Link href={classroomHref} onClick={handleClassroomClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isClassroomActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">school</span>
-          <span className="text-xs">Classroom</span>
-        </Link>
-        <Link href={expertHref} onClick={handleExpertClick} className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isExpertActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">smart_toy</span>
-          <span className="text-xs">AI Expert</span>
-        </Link>
-        <Link href={friendsHref} onClick={handleFriendsClick} title="Chat with AI study companions who help you learn" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isFriendsActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">forum</span>
-          <span className="text-xs">AI Friends</span>
-        </Link>
-        <Link href="/smart-board" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isSmartBoardActive ? 'text-purple font-bold bg-purple/15 border-l-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">developer_board</span>
-          <span className="text-xs">Smart Board</span>
-        </Link>
-        <Link href="/community" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isCommunityActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">groups</span>
-          <span className="text-xs">Community</span>
-        </Link>
-        <Link href="/podcasts" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isPodcastsActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">podcasts</span>
-          <span className="text-xs">Podcasts</span>
-        </Link>
-        <Link href="/profile" className={`flex items-center gap-3 p-3 rounded-xl transition-all ${isProfileActive ? 'text-purple font-semibold bg-purple/15 border-r-4 border-purple' : 'text-text-muted hover:bg-purple/5 hover:text-text-primary'}`}>
-          <span className="material-symbols-outlined text-sm">person</span>
-          <span className="text-xs">Profile</span>
-        </Link>
+
+      <nav className="flex-1 space-y-0.5">
+        {[
+          { href: '/dashboard', icon: 'home', label: 'Dashboard', active: isDashboardActive },
+          { href: classroomHref, icon: 'school', label: 'Classroom', active: isClassroomActive, onClick: handleClassroomClick },
+          { href: expertHref, icon: 'smart_toy', label: 'AI Expert', active: isExpertActive, onClick: handleExpertClick },
+          { href: friendsHref, icon: 'forum', label: 'AI Friends', active: isFriendsActive, onClick: handleFriendsClick },
+          { href: '/smart-board', icon: 'developer_board', label: 'Smart Board', active: isSmartBoardActive },
+          { href: '/community', icon: 'groups', label: 'Community', active: isCommunityActive },
+          { href: '/podcasts', icon: 'podcasts', label: 'Podcasts', active: isPodcastsActive },
+          { href: '/profile', icon: 'person', label: 'Profile', active: isProfileActive },
+        ].map(({ href, icon, label, active, onClick }) => (
+          <Link key={label} href={href} onClick={onClick}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm ${
+              active
+                ? 'bg-[#A8C7FA]/10 text-[#A8C7FA] font-medium'
+                : 'text-[#9AA0A6] hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>{icon}</span>
+            <span>{label}</span>
+          </Link>
+        ))}
       </nav>
 
-      <div className="mt-auto space-y-1 border-t border-white/5 pt-4">
+      <div className="mt-auto space-y-1 border-t border-white/[0.06] pt-4">
         <button
           onClick={handleRaiseHandClick}
           title="Ask your teacher a live question"
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple to-blue text-white font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-xs"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#A8C7FA]/10 border border-[#A8C7FA]/20 text-[#A8C7FA] font-medium text-sm hover:bg-[#A8C7FA]/15 active:scale-[0.98] transition-all"
         >
-          ✋ Raise Hand
+          <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>pan_tool</span>
+          Raise Hand
         </button>
-        <button onClick={signOut} className="w-full flex items-center gap-3 p-3 rounded-xl text-text-muted hover:text-red-400 transition-colors text-left">
-          <span className="material-symbols-outlined text-sm">logout</span>
-          <span className="text-xs">Sign Out</span>
+        <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[#9AA0A6] hover:text-red-400 hover:bg-white/5 transition-colors text-left text-sm">
+          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>logout</span>
+          <span>Sign Out</span>
         </button>
       </div>
     </aside>
