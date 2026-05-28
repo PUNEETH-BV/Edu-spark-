@@ -1,41 +1,27 @@
+// generate-mindmap.js — Shared Context Engine powered
 import { getGeminiModel } from '@/lib/gemini';
+import { buildAIContext } from '@/lib/contextEngine';
+import { getMindMapPrompt } from '@/lib/aiPrompts';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { videoTitle, subject, segments, content } = req.body;
+  const { videoTitle, subject, segments, content, style } = req.body;
   if (!videoTitle) return res.status(400).json({ error: 'videoTitle required' });
 
-  const segmentTitles = (segments || []).map(s => s.title).join(', ');
+  // Build shared context
+  const context = buildAIContext({
+    video: { title: videoTitle, subject, content },
+    segments: segments || [],
+  });
 
-  const prompt = `Create a Mermaid.js mind map for this educational ${content ? 'document' : 'video'}.
-
-Title: "${videoTitle}"
-Subject: ${subject || 'General'}
-${content ? `Document content to map connections from:\n"""\n${content}\n"""` : `Sections: ${segmentTitles || 'General content'}`}
-
-Return ONLY the raw Mermaid mindmap code (no markdown fences, no explanation):
-
-mindmap
-  root((${subject || 'Video'}))
-    Section1
-      concept1
-      concept2
-    Section2
-      concept3
-
-Rules:
-- Use the actual topic names from the video
-- Max 4 levels deep
-- Max 6 branches from root
-- Each branch max 4 children
-- Keep labels short (1-4 words)
-- No special characters except spaces and parentheses`;
+  // Get NotebookLM-style semantic mind map prompt
+  const prompt = getMindMapPrompt(context, { style: style || 'semantic' });
 
   try {
-    const model  = getGeminiModel('gemini-2.0-flash');
+    const model = getGeminiModel('gemini-2.0-flash');
     const result = await model.generateContent(prompt);
-    let mermaid  = result.response.text().trim();
+    let mermaid = result.response.text().trim();
 
     // Clean up any accidental code fences
     mermaid = mermaid.replace(/^```[a-z]*\n?/gm, '').replace(/```$/gm, '').trim();
