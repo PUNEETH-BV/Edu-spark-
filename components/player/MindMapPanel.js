@@ -2,6 +2,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 
+// Inject React Flow CSS on client-side only (avoids SSR/Next.js CSS pipeline issues)
+function useReactFlowCSS() {
+  useEffect(() => {
+    const id = 'xyflow-react-styles';
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = 'https://unpkg.com/@xyflow/react@12/dist/style.css';
+    document.head.appendChild(link);
+  }, []);
+}
+
 // Load the entire React Flow canvas client-side only
 const MindMapFlow = dynamic(() => import('./MindMapFlow'), {
   ssr: false,
@@ -241,6 +255,7 @@ function NodeInfo({ node, onClose }) {
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 export default function MindMapPanel({ video, segments }) {
+  useReactFlowCSS(); // Inject @xyflow/react CSS client-side only
   const [graphData, setGraphData]       = useState(null);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');

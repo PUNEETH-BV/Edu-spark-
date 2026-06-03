@@ -1,6 +1,6 @@
 // MindMapFlow.js – Pure client-side React Flow canvas (no SSR)
-// This file is dynamically imported by MindMapPanel.js
-import React, { useCallback } from 'react';
+// This file is dynamically imported by MindMapPanel.js with { ssr: false }
+import React from 'react';
 import {
   ReactFlow,
   Background,

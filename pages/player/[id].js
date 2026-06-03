@@ -14,7 +14,9 @@ import SegmentTimeline from '@/components/player/SegmentTimeline';
 import QuizPanel       from '@/components/player/QuizPanel';
 import FlashcardDeck   from '@/components/player/FlashcardDeck';
 import NotesPanel      from '@/components/player/NotesPanel';
+import dynamic from 'next/dynamic';
 import MindMapPanel    from '@/components/player/MindMapPanel';
+
 import PodcastPanel    from '@/components/player/PodcastPanel';
 import RaiseHandPanel  from '@/components/player/RaiseHandPanel';
 import BookmarksPanel  from '@/components/player/BookmarksPanel';
@@ -820,7 +822,7 @@ export default function PlayerPage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#E3E3E3' }}>Workspace Guide</span>
                           </div>
                           <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: '#D1D1D1' }}>
-                            {notebookData.chatIntro.message.replace(/\*\*/g, '')}
+                            {(notebookData.chatIntro.message || '').replace(/\*\*/g, '')}
                           </p>
                           
                           {notebookData.chatIntro.suggestedActions?.length > 0 && (
