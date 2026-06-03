@@ -343,6 +343,7 @@ body {
 .border-blue       { border-color: var(--blue); }
 .border-green      { border-color: var(--green); }
 
+
 /* Blinking terminal cursor caret animation */
 @keyframes caret-blink {
   0%, 100% { opacity: 1; }
@@ -352,3 +353,42 @@ body {
   animation: caret-blink 0.8s steps(2) infinite;
 }
 
+/* ─── React Flow (Mind Map) dark theme overrides ─────────────────────────── */
+.react-flow__controls {
+  background: #1E2030 !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  gap: 2px !important;
+}
+.react-flow__controls-button {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  color: #9AA0A6 !important;
+  width: 28px !important;
+  height: 28px !important;
+  fill: #9AA0A6 !important;
+  transition: background 0.15s !important;
+}
+.react-flow__controls-button:hover {
+  background: rgba(168,199,250,0.1) !important;
+  color: #A8C7FA !important;
+  fill: #A8C7FA !important;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+.react-flow__minimap {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+.react-flow__edge-path {
+  stroke-width: 1.5px;
+}
+.react-flow__node:focus {
+  outline: none !important;
+}
+.react-flow__node.selected > div {
+  box-shadow: 0 0 0 2px rgba(168,199,250,0.6) !important;
+}
